@@ -3,61 +3,218 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kingdom RPG</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: sans-serif; background: #0f0f0f; color: #e0e0e0; text-align: center; margin: 0; padding: 20px; }
-        .card { background: #1e1e1e; border-radius: 20px; padding: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); border: 1px solid #333; }
-        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-        .stat-box { background: #2a2a2a; padding: 10px; border-radius: 12px; font-weight: bold; border: 1px solid #444; }
-        .btn-main { background: linear-gradient(135deg, #ff9800, #f44336); color: white; border: none; width: 100%; padding: 20px; border-radius: 15px; font-size: 1.2rem; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-main:active { transform: scale(0.96); opacity: 0.9; }
-        h2 { color: #ff9800; margin-top: 0; }
-        .log { font-size: 0.9rem; color: #888; margin-top: 15px; height: 40px; }
+        :root {
+            --gold: #ff9800; --bg: #0a0a0a; --card: #161616; --text: #e0e0e0;
+            --rarity-0: #888; --rarity-1: #4caf50; --rarity-2: #2196f3;
+            --rarity-3: #9c27b0; --rarity-4: #f44336; --rarity-5: #e91e63;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg); color: var(--text); margin: 0; padding: 0;
+            height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        /* Экраны и вкладки */
+        .screen { display: none; height: 100%; flex-direction: column; padding: 15px; overflow-y: auto; padding-bottom: 80px; }
+        .active { display: flex; }
+
+        /* Стили для Setup */
+        #setup-screen { position: fixed; inset: 0; z-index: 100; background: var(--bg); align-items: center; justify-content: center; }
+        .setup-card { background: var(--card); padding: 25px; border-radius: 24px; border: 1px solid #333; width: 90%; max-width: 400px; text-align: center; }
+        input { background: #222; border: 1px solid #444; color: white; padding: 15px; border-radius: 12px; width: 100%; margin: 15px 0; font-size: 1rem; outline: none; }
+        input:focus { border-color: var(--gold); }
+        
+        .path-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .path-btn { background: #222; border: 1px solid #444; color: white; padding: 12px; border-radius: 12px; cursor: pointer; font-size: 0.85rem; transition: 0.2s; }
+        .path-btn.selected { border-color: var(--gold); background: #2a1f0d; color: var(--gold); box-shadow: 0 0 10px rgba(255, 152, 0, 0.2); }
+
+        /* Навигация (Нижняя панель) */
+        .nav-bar {
+            position: fixed; bottom: 0; width: 100%; background: #111;
+            display: grid; grid-template-columns: repeat(7, 1fr);
+            border-top: 1px solid #333; height: 65px; z-index: 50;
+        }
+        .nav-item {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 0.65rem; color: #666; cursor: pointer; border: none; background: none;
+        }
+        .nav-item.active { color: var(--gold); }
+        .nav-item i { font-size: 1.2rem; margin-bottom: 3px; }
+
+        /* Общие компоненты UI */
+        .card { background: var(--card); border-radius: 20px; padding: 15px; border: 1px solid #282828; margin-bottom: 12px; }
+        .btn-gold { background: var(--gold); color: black; border: none; padding: 15px; border-radius: 15px; font-weight: bold; width: 100%; cursor: pointer; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .avatar { width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--gold); background: #333; cursor: pointer; overflow: hidden; }
+        .avatar img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .res-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px; }
+        .res-item { background: #1f1f1f; padding: 12px; border-radius: 14px; border: 1px solid #333; display: flex; flex-direction: column; }
+        .res-val { font-size: 1.1rem; font-weight: bold; color: var(--gold); }
+        .res-label { font-size: 0.7rem; color: #888; text-transform: uppercase; }
+
+        /* Лог */
+        .game-log { font-size: 0.8rem; color: #666; min-height: 20px; text-align: center; margin-top: 10px; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h2>Королевство 🏰</h2>
-        <div class="stat-grid">
-            <div class="stat-box">💰 <span id="gold">0</span></div>
-            <div class="stat-box">⭐ Ур. <span id="lvl">1</span></div>
+
+    <div id="setup-screen" class="screen">
+        <div class="setup-card">
+            <h2 style="margin:0">Основание</h2>
+            <p style="font-size: 0.8rem; color: #777;">Выберите путь. Изменить его нельзя.</p>
+            <input type="text" id="setup-name" placeholder="Название королевства" maxlength="16">
+            <div class="path-grid" id="setup-paths">
+                <button class="path-btn" onclick="setPath('Стройматериалы', '🏗️', this)">🏗️ Стройматериалы</button>
+                <button class="path-btn" onclick="setPath('Алхимия', '⚗️', this)">⚗️ Алхимия</button>
+                <button class="path-btn" onclick="setPath('Образование', '📜', this)">📜 Образование</button>
+                <button class="path-btn" onclick="setPath('Еда', '🍞', this)">🍞 Еда</button>
+            </div>
+            <button id="setup-confirm" class="btn-gold" style="margin-top:20px; opacity:0.5" disabled onclick="confirmSetup()">СОЗДАТЬ</button>
         </div>
-        <button class="btn-main" onclick="farm()">РАБОТАТЬ</button>
-        <div class="log" id="log">Нажмите на кнопку, чтобы начать...</div>
     </div>
+
+    <main id="main-ui" style="display:none; height:100%">
+        <section id="tab-home" class="screen active">
+            <div class="header">
+                <div>
+                    <h3 id="ui-k-name" style="margin:0">Королевство</h3>
+                    <small id="ui-k-path" style="color:var(--gold)">Путь</small>
+                </div>
+                <div class="avatar" onclick="openProfile()"><img id="ui-avatar" src="" alt=""></div>
+            </div>
+            <div class="res-row">
+                <div class="res-item"><span class="res-label">Золото</span><span class="res-val" id="ui-gold">0</span></div>
+                <div class="res-item"><span class="res-label" id="ui-res-name">Ресурс</span><span class="res-val" id="ui-res-val">0</span></div>
+            </div>
+            <div class="card">
+                <p style="font-size: 0.9rem; color: #aaa; margin-top:0">Доход: <span id="ui-income">0</span>/мин</p>
+                <button class="btn-gold" onclick="manualWork()">РАБОТАТЬ ⚒️</button>
+                <div id="home-log" class="game-log">Мир замер в ожидании ваших указов...</div>
+            </div>
+            <div id="worker-list-home">
+                </div>
+        </section>
+
+        <section id="tab-top" class="screen"><h2>Топ игроков</h2></section>
+        <section id="tab-hire" class="screen"><h2>Найм рабочих</h2></section>
+        <section id="tab-market" class="screen"><h2>Рынок</h2></section>
+        <section id="tab-workshop" class="screen"><h2>Мастерская</h2></section>
+        <section id="tab-world" class="screen"><h2>Мир</h2></section>
+        <section id="tab-settings" class="screen"><h2>Настройки</h2></section>
+
+        <nav class="nav-bar">
+            <button class="nav-item active" onclick="switchTab('home', this)">🏠<span>Главная</span></button>
+            <button class="nav-item" onclick="switchTab('top', this)">🏆<span>Топ</span></button>
+            <button class="nav-item" onclick="switchTab('hire', this)">🤝<span>Найм</span></button>
+            <button class="nav-item" onclick="switchTab('market', this)">⚖️<span>Рынок</span></button>
+            <button class="nav-item" onclick="switchTab('workshop', this)">⚒️<span>Цех</span></button>
+            <button class="nav-item" onclick="switchTab('world', this)">🌍<span>Мир</span></button>
+            <button class="nav-item" onclick="switchTab('settings', this)">⚙️<span>Опции</span></button>
+        </nav>
+    </main>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
         tg.enableClosingConfirmation();
 
-        // Загрузка данных
-        let gold = int(localStorage.getItem('gold')) || 0;
-        let lvl = int(localStorage.getItem('lvl')) || 1;
+        // Глобальное состояние игры
+        let state = JSON.parse(localStorage.getItem('k_rpg_state')) || {
+            init: false,
+            name: "",
+            path: "",
+            icon: "🏗️",
+            gold: 100,
+            res: 0,
+            level: 1,
+            workers: [],
+            inventory: [],
+            stats: { wins: 0, points: 0 }
+        };
+
+        let tempPath = "";
+        let tempIcon = "";
+
+        function init() {
+            if (!state.init) {
+                document.getElementById('setup-screen').classList.add('active');
+            } else {
+                document.getElementById('main-ui').style.display = 'block';
+                updateUI();
+            }
+        }
+
+        // Логика Setup
+        function setPath(path, icon, btn) {
+            tempPath = path; tempIcon = icon;
+            document.querySelectorAll('.path-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            validateSetup();
+        }
+
+        const nameInput = document.getElementById('setup-name');
+        nameInput.oninput = validateSetup;
+
+        function validateSetup() {
+            const btn = document.getElementById('setup-confirm');
+            if (nameInput.value.length >= 3 && tempPath !== "") {
+                btn.disabled = false; btn.style.opacity = "1";
+            }
+        }
+
+        function confirmSetup() {
+            state.name = nameInput.value;
+            state.path = tempPath;
+            state.icon = tempIcon;
+            state.init = true;
+            save();
+            document.getElementById('setup-screen').classList.remove('active');
+            document.getElementById('main-ui').style.display = 'block';
+            updateUI();
+            tg.HapticFeedback.notificationOccurred('success');
+        }
+
+        // Навигация
+        function switchTab(tabId, btn) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+            btn.classList.add('active');
+            tg.HapticFeedback.impactOccurred('light');
+        }
+
+        function manualWork() {
+            state.res += (1 * state.level);
+            tg.HapticFeedback.impactOccurred('medium');
+            updateUI();
+            document.getElementById('home-log').innerText = `Добыто ресурсов: +${1 * state.level}`;
+        }
 
         function updateUI() {
-            document.getElementById('gold').innerText = gold;
-            document.getElementById('lvl').innerText = lvl;
-            localStorage.setItem('gold', gold);
-            localStorage.setItem('lvl', lvl);
+            document.getElementById('ui-k-name').innerText = state.name;
+            document.getElementById('ui-k-path').innerText = state.icon + " Путь: " + state.path;
+            document.getElementById('ui-gold').innerText = Math.floor(state.gold);
+            document.getElementById('ui-res-val').innerText = Math.floor(state.res);
+            document.getElementById('ui-res-name').innerText = state.path;
+            save();
         }
 
-        function int(val) { return parseInt(val); }
+        function save() { localStorage.setItem('k_rpg_state', JSON.stringify(state)); }
 
-        function farm() {
-            gold += 1;
-            if (gold % 50 === 0) {
-                lvl += 1;
-                tg.HapticFeedback.notificationOccurred('success');
-                document.getElementById('log').innerText = "Уровень повышен! +1 к званию";
-            } else {
-                tg.HapticFeedback.impactOccurred('light');
-                document.getElementById('log').innerText = "Вы заработали 1 золотой";
-            }
-            updateUI();
+        function openProfile() {
+            tg.showPopup({
+                title: state.name,
+                message: `Уровень королевства: ${state.level}\nРесурс: ${state.path}\nЗолото: ${Math.floor(state.gold)}`,
+                buttons: [{type: 'close'}]
+            });
         }
 
-        updateUI();
+        init();
     </script>
 </body>
 </html>
