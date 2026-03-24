@@ -119,22 +119,129 @@
     </main>
 
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-        tg.enableClosingConfirmation();
+       const tg = window.Telegram.WebApp;
+tg.expand();
+tg.enableClosingConfirmation();
 
-        // Глобальное состояние игры
-        let state = JSON.parse(localStorage.getItem('k_rpg_state')) || {
-            init: false,
-            name: "",
-            path: "",
-            icon: "🏗️",
-            gold: 100,
-            res: 0,
-            level: 1,
-            workers: [],
-            inventory: [],
-            stats: { wins: 0, points: 0 }
+// Глобальное состояние игры
+let state = JSON.parse(localStorage.getItem('k_rpg_state')) || {
+    init: false,
+    name: "",
+    path: "",
+    icon: "🏗️",
+    gold: 100,
+    res: 0,
+    level: 1,
+    workers: [],
+    inventory: [],
+    stats: { wins: 0, points: 0 }
+};
+
+let tempPath = "";
+let tempIcon = "";
+
+function init() {
+    const setupNameInput = document.getElementById('setup-name');
+    
+    // Проверяем, создано ли уже королевство
+    if (!state.init) {
+        document.getElementById('setup-screen').classList.add('active');
+        // Добавляем слежку за вводом текста
+        setupNameInput.addEventListener('input', validateSetup);
+    } else {
+        document.getElementById('main-ui').style.display = 'block';
+        updateUI();
+    }
+}
+
+// Логика выбора пути
+function setPath(path, icon, btn) {
+    tempPath = path; 
+    tempIcon = icon;
+    // Снимаем выделение со всех кнопок и даем активной
+    document.querySelectorAll('.path-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    
+    validateSetup(); // Проверяем кнопку сразу после клика
+    tg.HapticFeedback.impactOccurred('light');
+}
+
+function validateSetup() {
+    const nameVal = document.getElementById('setup-name').value.trim();
+    const btn = document.getElementById('setup-confirm');
+    
+    // Условие: имя > 2 символов И выбран путь
+    if (nameVal.length >= 3 && tempPath !== "") {
+        btn.disabled = false;
+        btn.style.opacity = "1";
+        btn.style.transform = "scale(1.02)";
+    } else {
+        btn.disabled = true;
+        btn.style.opacity = "0.5";
+        btn.style.transform = "scale(1)";
+    }
+}
+
+function confirmSetup() {
+    const nameVal = document.getElementById('setup-name').value.trim();
+    
+    state.name = nameVal;
+    state.path = tempPath;
+    state.icon = tempIcon;
+    state.init = true;
+    
+    save(); // Сохраняем в память
+    
+    // Переключаем экраны
+    document.getElementById('setup-screen').classList.remove('active');
+    document.getElementById('main-ui').style.display = 'block';
+    
+    updateUI();
+    tg.HapticFeedback.notificationOccurred('success');
+}
+
+// Переключение вкладок
+function switchTab(tabId, btn) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    
+    const targetTab = document.getElementById('tab-' + tabId);
+    if (targetTab) targetTab.classList.add('active');
+    btn.classList.add('active');
+    
+    tg.HapticFeedback.impactOccurred('light');
+}
+
+function manualWork() {
+    state.res += (1 * state.level);
+    tg.HapticFeedback.impactOccurred('medium');
+    updateUI();
+    document.getElementById('home-log').innerText = `Добыто: +${1 * state.level} ${state.path}`;
+}
+
+function updateUI() {
+    document.getElementById('ui-k-name').innerText = state.name;
+    document.getElementById('ui-k-path').innerText = state.icon + " " + state.path;
+    document.getElementById('ui-gold').innerText = Math.floor(state.gold);
+    document.getElementById('ui-res-val').innerText = Math.floor(state.res);
+    document.getElementById('ui-res-name').innerText = state.path;
+    save();
+}
+
+function save() { 
+    localStorage.setItem('k_rpg_state', JSON.stringify(state)); 
+}
+
+function openProfile() {
+    tg.showPopup({
+        title: state.name,
+        message: `Уровень: ${state.level}\nРесурс: ${state.path}\nЗолото: ${Math.floor(state.gold)}💰`,
+        buttons: [{type: 'close', text: 'Понятно'}]
+    });
+}
+
+// Запуск
+init();
         };
 
         let tempPath = "";
