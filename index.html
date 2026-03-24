@@ -134,7 +134,7 @@
 
             <div class="flex justify-between align-center mb-10">
                 <h3>Ваши Рабочие (<span id="worker-count">0</span>)</h3>
-                <button class="btn-action" onclick="workManually()">спиздить деньги (+1💰)</button>
+                <button class="btn-action" onclick="workManually()">Собрать налог (+1💰)</button>
             </div>
             
             <div id="workers-list"></div>
@@ -197,16 +197,6 @@
 
         <!-- Tab: WORKSHOP -->
         <section id="tab-workshop" class="screen">
-            <div class="worker-stats mt-10">
-    <div class="flex justify-between">
-        <span>Рабочие: <b id="worker-count">0</b></span>
-        <span>Доход: <b id="worker-income">0</b>/мин</span>
-    </div>
-    <div class="hp-bar-bg" style="background: #333; margin-top: 5px;">
-        <div id="exp-bar-fill" class="hp-bar-fill" style="width: 20%; background: var(--safe);"></div>
-    </div>
-    <div class="text-center" style="font-size: 10px; color: var(--text-muted);">Опыт: <span id="exp-val">100/500</span></div>
-</div>
             <div class="modal-tabs">
                 <div class="m-tab active" onclick="switchWorkshop(0)">⚒️ Кузница</div>
                 <div class="m-tab" onclick="switchWorkshop(1)">⚗️ Лаборатория</div>
@@ -321,152 +311,163 @@
             { id: "two_faced", name: "Двуликость", desc: "Проклятие: 10% шанс бить своих, 5% шанс убить ХП рабочему вне боя", type: "curse", val: 0 } // Mythic curse
         ];
 
-     
-/* --- STATE --- */
+        /* --- STATE --- */
         let STATE = JSON.parse(localStorage.getItem('k_rpg_save')) || {
-            init: false, 
-            name: "", 
-            path: "gold", 
-            icon: "🏰", 
-            level: 1, 
-            xp: 100, 
+            init: false, name: "", path: "", icon: "", level: 1, xp: 0,
             res: { gold: 500, food: 1000, wood: 1000, alchemy: 1000, edu: 1000 },
-            workersCount: 1,
-            workerRate: 10,
-            lastHarvest: Date.now(),
             workers: [],
             inventory: [],
             hirePool: [],
-            hireTimer: 7200, 
+            hireTimer: 7200, // 2 hours in sec
             lastTick: Date.now()
         };
 
-        function saveState() {
-            localStorage.setItem('k_rpg_save', JSON.stringify(STATE));
-        }
+     /* --- SETUP --- */
+let tempPath = "", tempIcon = "";
+function setPath(p, i) {
+    tempPath = p; tempIcon = i;
+    document.querySelectorAll('.path-btn').forEach(b => b.classList.remove('selected'));
+    
+    if (window.event && window.event.target) {
+        window.event.target.classList.add('selected');
+    }
+    
+    document.getElementById('setup-confirm').disabled = false;
+}
 
-        /* --- SETUP --- */
-        let tempPath = "", tempIcon = "";
-        function setPath(p, i) {
-            tempPath = p; tempIcon = i;
-            document.querySelectorAll('.path-btn').forEach(b => b.classList.remove('selected'));
-            if (window.event && window.event.target) window.event.target.classList.add('selected');
-            document.getElementById('setup-confirm').disabled = false;
-        }
+function confirmSetup() {
+    STATE.name = document.getElementById('setup-name').value || "Авалон";
+    STATE.path = tempPath; 
+    STATE.icon = tempIcon; 
+    STATE.init = true;
 
-        function confirmSetup() {
-            STATE.name = document.getElementById('setup-name').value || "Авалон";
-            STATE.path = tempPath; 
-            STATE.icon = tempIcon; 
-            STATE.init = true;
-            STATE.workersCount = 1;
-            STATE.xp = 100;
+    // --- ВОТ ЭТИ 3 СТРОЧКИ НУЖНО ДОБАВИТЬ ---
+    STATE.workersCount = 1;   // Устанавливаем 1 рабочего для пассивного дохода
+    STATE.xp = 100;           // Устанавливаем стартовый опыт 100
+    STATE.lastHarvest = Date.now(); // Сбрасываем таймер добычи ресурсов
+    // ---------------------------------------
 
-            // Если функции генерации рабочих есть в коде выше или ниже
-            if (typeof generateWorker === "function") {
-                let firstWorker = generateWorker(0);
-                if (typeof hireWorkerToState === "function") hireWorkerToState(firstWorker);
-            }
-            
-            saveState();
-            document.getElementById('setup-screen').classList.remove('active');
-            document.getElementById('top-bar').style.display = 'flex';
-            document.getElementById('game-container').style.display = 'block';
-            document.getElementById('bottom-nav').style.display = 'flex';
-            if (typeof generateHirePool === "function") generateHirePool();
-            updateUI();
-        }
-
-        /* --- UI RENDERERS --- */
-        function updateUI() {
-            if(!STATE.init) return;
-            
-            // Обновление хедера
-            const hdrKingdom = document.getElementById('hdr-kingdom');
-            if (hdrKingdom) hdrKingdom.innerText = (STATE.icon || "🏰") + " " + STATE.name;
-            const hdrGold = document.getElementById('hdr-gold');
-            if (hdrGold) hdrGold.innerText = Math.floor(STATE.res.gold);
-            
-            // Обновление ресурсов
-            for (let r in STATE.res) {
-                let el = document.getElementById('res-' + r);
-                if (el) el.innerText = Math.floor(STATE.res[r]);
-            }
-            
-            const resProd = document.getElementById('res-prod');
-            if (resProd) resProd.innerText = Math.floor(STATE.res[STATE.path] || 0);
-            const resIcon = document.getElementById('res-icon');
-            if (resIcon) resIcon.innerText = STATE.icon;
-
-            // Профиль (из части 2)
-            const workerCountEl = document.getElementById('worker-count');
-            const workerIncomeEl = document.getElementById('worker-income');
-            const expValEl = document.getElementById('exp-val');
-            const expBarFill = document.getElementById('exp-bar-fill');
-
-            let passiveIncome = (STATE.workersCount || 0) * (STATE.workerRate || 10);
-            if (workerCountEl) workerCountEl.innerText = STATE.workersCount;
-            if (workerIncomeEl) workerIncomeEl.innerText = passiveIncome + "/м";
-            
-            if (expValEl) expValEl.innerText = STATE.xp;
-            if (expBarFill) {
-                let progress = (STATE.xp / 500) * 100;
-                expBarFill.style.width = Math.min(progress, 100) + '%';
-            }
-
-            saveState();
-        }
+    // Твой старый код найма первого героя
+    if (typeof generateWorker === "function") {
+        hireWorkerToState(generateWorker(0));
+    }
+    
+    saveState();
+    
+    document.getElementById('setup-screen').classList.remove('active');
+    document.getElementById('top-bar').style.display = 'flex';
+    document.getElementById('game-container').style.display = 'block';
+    document.getElementById('bottom-nav').style.display = 'flex';
+    
+    if (typeof generateHirePool === "function") generateHirePool();
+    updateUI();
+}
 
         /* --- CORE LOGIC --- */
+        function generateWorker(forceRank = -1) {
+            // Ranks: Common 50%, Rare 30%, SR 12%, Epic 6%, Leg 1.9%, Mythic 0.1%
+            let r = Math.random() * 100;
+            let rankId = 0;
+            if (forceRank !== -1) rankId = forceRank;
+            else if (r < 0.1) rankId = 5;
+            else if (r < 2) rankId = 4;
+            else if (r < 8) rankId = 3;
+            else if (r < 20) rankId = 2;
+            else if (r < 50) rankId = 1;
+
+            let rank = RANKS[rankId];
+            let cls = CLASSES[Math.floor(Math.random() * CLASSES.length)];
+            
+            // Abilities logic
+            let numAbilities = rank.cap;
+            let abilities = [];
+            let pool = [...TRAITS];
+            // random chances for extra abilities as per text
+            if (Math.random() < 0.3) numAbilities++; 
+            if (rankId === 5) {
+                // Mythic ultimate (just a placeholder for super skill)
+                abilities.push({ id: "ult", name: "Гнев Богов", desc: "Ультимативный навык", type: "combat", val: 2.0 });
+                numAbilities--;
+            }
+
+            for(let i=0; i<numAbilities; i++) {
+                if(pool.length === 0) break;
+                let idx = Math.floor(Math.random() * pool.length);
+                abilities.push(pool[idx]);
+                pool.splice(idx, 1);
+            }
+
+            let maxHp = 20 + (abilities.find(a=>a.id === 'thick_skin') ? 5 : 0);
+
+            return {
+                id: 'w_' + Date.now() + Math.floor(Math.random()*1000),
+                name: "Наёмник",
+                rankId: rankId,
+                clsId: cls.id,
+                level: 1, xp: 0,
+                hp: maxHp, maxHp: maxHp,
+                shield: 0, // seconds
+                hungerTimer: 0,
+                traits: abilities,
+                equip: { weapon: null, armor: null }
+            };
+        }
+
+        function getWorkerIncome(w) {
+            if (w.hp <= 0) return 0;
+            let base = RANKS[w.rankId].baseIncome;
+            // Level scaling: text says +2 for lvl 2, +4 for lvl 3 etc. (10, 12, 16)
+            let lvlBonus = w.level === 1 ? 0 : w.level === 2 ? 2 : w.level === 3 ? 6 : (w.level * 3);
+            let total = base + lvlBonus;
+            
+            if (w.traits.find(t => t.id === 'workaholic')) total = Math.floor(total * 1.2);
+            return total;
+        }
+
         function gameLoop() {
             if(!STATE.init) return;
             let now = Date.now();
-            let dt = (now - (STATE.lastTick || now)) / 1000;
-            if(dt < 0.5) return; // Оптимизация частоты обновлений
+            let dt = (now - STATE.lastTick) / 1000; // seconds
+            if(dt < 1) return;
             STATE.lastTick = now;
 
-            // Пассивный доход раз в минуту
-            if (now - (STATE.lastHarvest || 0) >= 60000) {
-                let income = (STATE.workersCount || 0) * (STATE.workerRate || 10);
-                if (income > 0 && STATE.path) {
-                    STATE.res[STATE.path] += income;
-                }
-                STATE.lastHarvest = now;
-            }
-
-            // Логика героев (HP и щиты)
-            if (STATE.workers && Array.isArray(STATE.workers)) {
-                STATE.workers.forEach(w => {
-                    if (w.shield > 0) w.shield = Math.max(0, w.shield - dt);
-                    if (w.shield <= 0 && w.hp > 0) {
-                        w.hungerTimer = (w.hungerTimer || 0) + dt;
-                        if (w.hungerTimer >= 120) {
-                            w.hp -= 1;
-                            w.hungerTimer = 0;
+            // 1. Worker Mechanics (HP, Shield, Income)
+            let incomeThisSec = 0;
+            STATE.workers.forEach(w => {
+                // Shield
+                if (w.shield > 0) w.shield = Math.max(0, w.shield - dt);
+                
+                // Hunger / HP Loss (1 HP per 2 mins = 120s) text: "Хп всего 20 1хп тратиться за2минуты"
+                if (w.shield <= 0 && w.hp > 0) {
+                    w.hungerTimer += dt;
+                    if (w.hungerTimer >= 120) {
+                        w.hp -= 1;
+                        w.hungerTimer = 0;
+                    }
+                    
+                    // Two faced curse proc outside combat (5% chance to drop random worker HP to 0)
+                    if (w.traits.find(t => t.id === 'two_faced') && Math.random() < 0.005) { // scaled for tick rate
+                        let targets = STATE.workers.filter(x => x.hp > 0 && x.id !== w.id);
+                        if(targets.length > 0) {
+                            let victim = targets[Math.floor(Math.random()*targets.length)];
+                            victim.hp = 0; 
+                            // console log equivalent
                         }
                     }
-                });
-            }
+                }
 
-            if(STATE.hireTimer > 0) STATE.hireTimer -= dt;
-            updateUI();
-        }
+                // Passive Income (10 per min = ~0.16 per sec)
+                let incPerMin = getWorkerIncome(w);
+                incomeThisSec += (incPerMin / 60) * dt;
+                
+                // Add tiny XP for working
+                if (w.hp > 0 && Math.random() < 0.1) giveWorkerXP(w, 1);
+            });
 
-        /* --- INITIALIZE --- */
-        // Запуск цикла
-        setInterval(gameLoop, 1000);
-        
-        // Проверка при загрузке страницы
-        window.addEventListener('load', () => {
-            if (!STATE.init) {
-                document.getElementById('setup-screen').classList.add('active');
-            } else {
-                document.getElementById('top-bar').style.display = 'flex';
-                document.getElementById('game-container').style.display = 'block';
-                document.getElementById('bottom-nav').style.display = 'flex';
-                updateUI();
-            }
-        });
+            // Store fractional income and integerize
+            STATE.fractionalIncome = (STATE.fractionalIncome || 0) + incomeThisSec;
+            if (STATE.fractionalIncome >= 1) {
+                let add = Math.floor(STATE.fractionalIncome);
                 STATE.res[STATE.path] += add;
                 STATE.fractionalIncome -= add;
             }
@@ -493,57 +494,25 @@
 
         function saveState() { localStorage.setItem('k_rpg_save', JSON.stringify(STATE)); }
 
-       /* --- UI RENDERERS --- */
-function updateUI() {
-    if (!STATE.init) return;
+        /* --- UI RENDERERS --- */
+        function updateUI() {
+            if(!STATE.init) return;
+            
+            // Header
+            document.getElementById('hdr-kingdom').innerText = STATE.icon + " " + STATE.name;
+            document.getElementById('hdr-gold').innerText = Math.floor(STATE.res.gold);
+            
+            // Resources tab
+            document.getElementById('res-food').innerText = Math.floor(STATE.res.food);
+            document.getElementById('res-wood').innerText = Math.floor(STATE.res.wood);
+            document.getElementById('res-alchemy').innerText = Math.floor(STATE.res.alchemy);
+            document.getElementById('res-edu').innerText = Math.floor(STATE.res.edu);
+            document.getElementById('res-prod').innerText = Math.floor(STATE.res[STATE.path]);
+            document.getElementById('res-icon').innerText = STATE.icon;
 
-    // 1. Хедер (Название королевства и Золото)
-    const hdrKingdom = document.getElementById('hdr-kingdom');
-    const hdrGold = document.getElementById('hdr-gold');
-    if (hdrKingdom) hdrKingdom.innerText = (STATE.icon || "") + " " + STATE.name;
-    if (hdrGold) hdrGold.innerText = Math.floor(STATE.res.gold);
-
-    // 2. Вкладка ресурсов (Еда, Дерево, Алхимия, Обучение)
-    const resTypes = ['food', 'wood', 'alchemy', 'edu'];
-    resTypes.forEach(type => {
-        const el = document.getElementById('res-' + type);
-        if (el) el.innerText = Math.floor(STATE.res[type]);
-    });
-
-    // Ресурс, который добывается в данный момент (path)
-    const resProd = document.getElementById('res-prod');
-    const resIcon = document.getElementById('res-icon');
-    if (resProd) resProd.innerText = Math.floor(STATE.res[STATE.path] || 0);
-    if (resIcon) resIcon.innerText = STATE.icon;
-
-    // 3. ОБНОВЛЕНИЕ ПРОФИЛЯ (из части 2)
-    // Общее кол-во рабочих (Count) и Доход в минуту
-    const workerCountEl = document.getElementById('worker-count');
-    const workerIncomeEl = document.getElementById('worker-income');
-    
-    // Рассчитываем доход: (пассивные рабочие * 10) + доход от героев (если есть функция getWorkerIncome)
-    let passiveIncome = (STATE.workersCount || 0) * (STATE.workerRate || 10);
-    let heroesIncome = 0;
-    if (typeof getWorkerIncome === "function") {
-        heroesIncome = STATE.workers.reduce((acc, w) => acc + getWorkerIncome(w), 0);
-    }
-    
-    if (workerCountEl) workerCountEl.innerText = STATE.workersCount || 0;
-    if (workerIncomeEl) workerIncomeEl.innerText = (passiveIncome + heroesIncome) + "/м";
-
-    // Опыт и Полоска опыта (100 / 500)
-    const expValEl = document.getElementById('exp-val');
-    const expBarFill = document.getElementById('exp-bar-fill');
-    
-    if (expValEl) expValEl.innerText = (STATE.xp || 0);
-    if (expBarFill) {
-        let progress = ((STATE.xp || 0) / 500) * 100;
-        expBarFill.style.width = Math.min(progress, 100) + '%';
-    }
-
-    // Сохранение прогресса
-    saveState();
-}
+            let totalIncome = STATE.workers.reduce((acc, w) => acc + getWorkerIncome(w), 0);
+            document.getElementById('res-income').innerText = totalIncome + "/м";
+            document.getElementById('worker-count').innerText = STATE.workers.length;
 
             // Workers list
             let wList = document.getElementById('workers-list');
