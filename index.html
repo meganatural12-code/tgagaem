@@ -112,12 +112,17 @@
 
     <!-- Main Game UI -->
     <div id="top-bar" class="top-info" style="display:none;">
-        <div>
-            <div style="font-weight:bold; font-size:16px;" id="hdr-kingdom">Королевство</div>
-            <div style="font-size:12px; color:var(--text-muted);">Ур. <span id="hdr-lvl">1</span> | 💰 <span id="hdr-gold">0</span></div>
+    <div>
+        <div style="font-weight:bold; font-size:16px;" id="hdr-kingdom">Королевство</div>
+        <div style="font-size:12px; color:var(--text-muted);">
+            Ур. <span id="hdr-lvl">1</span> | 💰 <span id="hdr-gold">0</span>
         </div>
-        <div class="avatar-small" onclick="showProfile()">👑</div>
     </div>
+    <div style="width: 80px; height: 4px; background: #333; border-radius: 2px; margin-top: 4px; overflow: hidden;">
+        <div id="hdr-exp-fill" style="width: 0%; height: 100%; background: var(--safe); transition: 0.3s;"></div>
+    </div>
+    <div class="avatar-small" onclick="showProfile()">👑</div>
+</div>
 
     <div id="game-container" style="display:none;">
         
@@ -494,9 +499,51 @@ function confirmSetup() {
 
         function saveState() { localStorage.setItem('k_rpg_save', JSON.stringify(STATE)); }
 
-        /* --- UI RENDERERS --- */
+      /* --- UI RENDERERS --- */
         function updateUI() {
             if(!STATE.init) return;
+            
+            // --- 1. ШАПКА (Header) ---
+            document.getElementById('hdr-kingdom').innerText = (STATE.icon || "🏰") + " " + STATE.name;
+            document.getElementById('hdr-gold').innerText = Math.floor(STATE.res.gold);
+            document.getElementById('hdr-lvl').innerText = STATE.level || 1;
+
+            // Полоска опыта в шапке
+            const expFill = document.getElementById('hdr-exp-fill');
+            if (expFill) {
+                let req = (STATE.level || 1) * 500; 
+                let pct = ((STATE.xp || 0) / req) * 100;
+                expFill.style.width = Math.min(pct, 100) + "%";
+            }
+            
+            // --- 2. ВКЛАДКА РЕСУРСОВ ---
+            document.getElementById('res-food').innerText = Math.floor(STATE.res.food);
+            document.getElementById('res-wood').innerText = Math.floor(STATE.res.wood);
+            document.getElementById('res-alchemy').innerText = Math.floor(STATE.res.alchemy);
+            document.getElementById('res-edu').innerText = Math.floor(STATE.res.edu);
+            
+            const resProd = document.getElementById('res-prod');
+            if (resProd) resProd.innerText = Math.floor(STATE.res[STATE.path] || 0);
+            
+            const resIcon = document.getElementById('res-icon');
+            if (resIcon) resIcon.innerText = STATE.icon;
+
+            // --- 3. ДАННЫЕ ПРОФИЛЯ (Новое) ---
+            const wc = document.getElementById('worker-count');
+            const wi = document.getElementById('worker-income');
+            const ev = document.getElementById('exp-val');
+            const eb = document.getElementById('exp-bar-fill');
+
+            if (wc) wc.innerText = STATE.workersCount || 0;
+            if (wi) wi.innerText = ((STATE.workersCount || 0) * (STATE.workerRate || 10)) + "/м";
+            if (ev) ev.innerText = Math.floor(STATE.xp || 0);
+            
+            // Полоска опыта в самом профиле
+            if (eb) {
+                let progress = ((STATE.xp || 0) / 500) * 100;
+                eb.style.width = Math.min(progress, 100) + '%';
+            }
+        };
             
             // Header
             document.getElementById('hdr-kingdom').innerText = STATE.icon + " " + STATE.name;
