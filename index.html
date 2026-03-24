@@ -347,31 +347,50 @@ let STATE = JSON.parse(localStorage.getItem('k_rpg_save')) || {
 };
         };
 
-        /* --- SETUP --- */
-        let tempPath = "", tempIcon = "";
-        function setPath(p, i) {
-            tempPath = p; tempIcon = i;
-            document.querySelectorAll('.path-btn').forEach(b => b.classList.remove('selected'));
-            event.target.classList.add('selected');
-            document.getElementById('setup-confirm').disabled = false;
-        }
+      /* --- SETUP --- */
+let tempPath = "", tempIcon = "";
 
-        function confirmSetup() {
-            STATE.name = document.getElementById('setup-name').value || "Авалон";
-            STATE.path = tempPath; 
-            STATE.icon = tempIcon; 
-            STATE.init = true;
-            // Give 1 common worker
-            hireWorkerToState(generateWorker(0));
-            saveState();
-            
-            document.getElementById('setup-screen').classList.remove('active');
-            document.getElementById('top-bar').style.display = 'flex';
-            document.getElementById('game-container').style.display = 'block';
-            document.getElementById('bottom-nav').style.display = 'flex';
-            generateHirePool();
-            updateUI();
-        }
+function setPath(p, i) {
+    tempPath = p; 
+    tempIcon = i;
+    document.querySelectorAll('.path-btn').forEach(b => b.classList.remove('selected'));
+    if (event && event.target) {
+        event.target.classList.add('selected');
+    }
+    document.getElementById('setup-confirm').disabled = false;
+}
+
+function confirmSetup() {
+    // 1. Сохраняем имя и выбранный путь
+    STATE.name = document.getElementById('setup-name').value || "Авалон";
+    STATE.path = tempPath; 
+    STATE.icon = tempIcon; 
+    STATE.init = true;
+
+    // 2. Добавляем данные из "Рабочего профиля 2"
+    STATE.workersCount = 1; // Даем 1 рабочего для пассивного дохода
+    STATE.xp = 100;         // Начальный опыт как на макете
+    STATE.level = 1;        // Начальный уровень
+
+    // 3. Твоя старая логика (выдача первого героя)
+    if (typeof generateWorker === "function") {
+        hireWorkerToState(generateWorker(0));
+    }
+
+    saveState();
+    
+    // 4. Управление экранами (скрываем установку, показываем игру)
+    document.getElementById('setup-screen').classList.remove('active');
+    document.getElementById('top-bar').style.display = 'flex';
+    document.getElementById('game-container').style.display = 'block';
+    document.getElementById('bottom-nav').style.display = 'flex';
+    
+    // 5. Запуск игровых процессов
+    if (typeof generateHirePool === "function") generateHirePool();
+    
+    // Обновляем экран, чтобы сразу увидеть 1 рабочего и 100 опыта
+    updateUI();
+}
 
         /* --- CORE LOGIC --- */
         function generateWorker(forceRank = -1) {
@@ -434,26 +453,52 @@ let STATE = JSON.parse(localStorage.getItem('k_rpg_save')) || {
             return total;
         }
 
-        function gameLoop() {
-            if(!STATE.init) return;
-            let now = Date.now();
-            let dt = (now - STATE.lastTick) / 1000; // seconds
-            if(dt < 1) return;
-            STATE.lastTick = now;
+       function gameLoop() {
+    if (!STATE.init) return;
 
-            // 1. Worker Mechanics (HP, Shield, Income)
-            let incomeThisSec = 0;
-            STATE.workers.forEach(w => {
-                // Shield
-                if (w.shield > 0) w.shield = Math.max(0, w.shield - dt);
-                
-                // Hunger / HP Loss (1 HP per 2 mins = 120s) text: "Хп всего 20 1хп тратиться за2минуты"
-                if (w.shield <= 0 && w.hp > 0) {
-                    w.hungerTimer += dt;
-                    if (w.hungerTimer >= 120) {
-                        w.hp -= 1;
-                        w.hungerTimer = 0;
-                    }
+    let now = Date.now();
+    let dt = (now - (STATE.lastTick || now)) / 1000; // Разница в секундах
+    if (dt < 1) return; 
+    STATE.lastTick = now;
+
+    // --- 1. МЕХАНИКА ГЛОБАЛЬНОЙ ДОБЫЧИ (из части 2) ---
+    // Проверяем, прошла ли минута с последнего сбора
+    if (now - STATE.lastHarvest >= 60000) {
+        let totalWorkers = STATE.workersCount || 0;
+        let income = totalWorkers * (STATE.workerRate || 10);
+        
+        if (income > 0 && STATE.path) {
+            STATE.res[STATE.path] += income;
+            // Можно добавить уведомление, если есть функция showToast:
+            // showToast(`Добыто ${income} ${STATE.path}`);
+        }
+        STATE.lastHarvest = now;
+        updateUI();
+    }
+
+    // --- 2. МЕХАНИКА ПЕРСОНАЖЕЙ (HP, Щит, Голод) ---
+    if (STATE.workers && Array.isArray(STATE.workers)) {
+        STATE.workers.forEach(w => {
+            // Щит (уменьшается со временем)
+            if (w.shield > 0) w.shield = Math.max(0, w.shield - dt);
+            
+            // Потеря HP (1 HP за 120 секунд), если щит пуст
+            if (w.shield <= 0 && w.hp > 0) {
+                w.hungerTimer = (w.hungerTimer || 0) + dt;
+                if (w.hungerTimer >= 120) {
+                    w.hp -= 1;
+                    w.hungerTimer = 0;
+                }
+            }
+        });
+    }
+
+    // --- 3. ТАЙМЕРЫ И ОБНОВЛЕНИЕ ---
+    if (STATE.hireTimer > 0) STATE.hireTimer -= dt;
+
+    // Обновляем интерфейс, чтобы видеть изменения HP и таймеров
+    updateUI();
+}
                     
                     // Two faced curse proc outside combat (5% chance to drop random worker HP to 0)
                     if (w.traits.find(t => t.id === 'two_faced') && Math.random() < 0.005) { // scaled for tick rate
@@ -504,25 +549,57 @@ let STATE = JSON.parse(localStorage.getItem('k_rpg_save')) || {
 
         function saveState() { localStorage.setItem('k_rpg_save', JSON.stringify(STATE)); }
 
-        /* --- UI RENDERERS --- */
-        function updateUI() {
-            if(!STATE.init) return;
-            
-            // Header
-            document.getElementById('hdr-kingdom').innerText = STATE.icon + " " + STATE.name;
-            document.getElementById('hdr-gold').innerText = Math.floor(STATE.res.gold);
-            
-            // Resources tab
-            document.getElementById('res-food').innerText = Math.floor(STATE.res.food);
-            document.getElementById('res-wood').innerText = Math.floor(STATE.res.wood);
-            document.getElementById('res-alchemy').innerText = Math.floor(STATE.res.alchemy);
-            document.getElementById('res-edu').innerText = Math.floor(STATE.res.edu);
-            document.getElementById('res-prod').innerText = Math.floor(STATE.res[STATE.path]);
-            document.getElementById('res-icon').innerText = STATE.icon;
+       /* --- UI RENDERERS --- */
+function updateUI() {
+    if (!STATE.init) return;
 
-            let totalIncome = STATE.workers.reduce((acc, w) => acc + getWorkerIncome(w), 0);
-            document.getElementById('res-income').innerText = totalIncome + "/м";
-            document.getElementById('worker-count').innerText = STATE.workers.length;
+    // 1. Хедер (Название королевства и Золото)
+    const hdrKingdom = document.getElementById('hdr-kingdom');
+    const hdrGold = document.getElementById('hdr-gold');
+    if (hdrKingdom) hdrKingdom.innerText = (STATE.icon || "") + " " + STATE.name;
+    if (hdrGold) hdrGold.innerText = Math.floor(STATE.res.gold);
+
+    // 2. Вкладка ресурсов (Еда, Дерево, Алхимия, Обучение)
+    const resTypes = ['food', 'wood', 'alchemy', 'edu'];
+    resTypes.forEach(type => {
+        const el = document.getElementById('res-' + type);
+        if (el) el.innerText = Math.floor(STATE.res[type]);
+    });
+
+    // Ресурс, который добывается в данный момент (path)
+    const resProd = document.getElementById('res-prod');
+    const resIcon = document.getElementById('res-icon');
+    if (resProd) resProd.innerText = Math.floor(STATE.res[STATE.path] || 0);
+    if (resIcon) resIcon.innerText = STATE.icon;
+
+    // 3. ОБНОВЛЕНИЕ ПРОФИЛЯ (из части 2)
+    // Общее кол-во рабочих (Count) и Доход в минуту
+    const workerCountEl = document.getElementById('worker-count');
+    const workerIncomeEl = document.getElementById('worker-income');
+    
+    // Рассчитываем доход: (пассивные рабочие * 10) + доход от героев (если есть функция getWorkerIncome)
+    let passiveIncome = (STATE.workersCount || 0) * (STATE.workerRate || 10);
+    let heroesIncome = 0;
+    if (typeof getWorkerIncome === "function") {
+        heroesIncome = STATE.workers.reduce((acc, w) => acc + getWorkerIncome(w), 0);
+    }
+    
+    if (workerCountEl) workerCountEl.innerText = STATE.workersCount || 0;
+    if (workerIncomeEl) workerIncomeEl.innerText = (passiveIncome + heroesIncome) + "/м";
+
+    // Опыт и Полоска опыта (100 / 500)
+    const expValEl = document.getElementById('exp-val');
+    const expBarFill = document.getElementById('exp-bar-fill');
+    
+    if (expValEl) expValEl.innerText = (STATE.xp || 0);
+    if (expBarFill) {
+        let progress = ((STATE.xp || 0) / 500) * 100;
+        expBarFill.style.width = Math.min(progress, 100) + '%';
+    }
+
+    // Сохранение прогресса
+    saveState();
+}
 
             // Workers list
             let wList = document.getElementById('workers-list');
