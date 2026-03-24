@@ -10,7 +10,7 @@
             --gold: #ff9800; --bg: #0a0a0a; --card: #161616; --text: #e0e0e0;
             --exp: #4caf50;
         }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
         body {
             font-family: 'Segoe UI', sans-serif;
             background: var(--bg); color: var(--text); margin: 0; padding: 0;
@@ -20,12 +20,12 @@
         .screen { display: none; height: 100%; flex-direction: column; padding: 15px; overflow-y: auto; padding-bottom: 80px; }
         .active { display: flex; }
 
-        /* Шапка с опытом */
+        /* Шапка */
         .header-top { margin-bottom: 15px; }
         .exp-bar { width: 100%; background: #222; height: 8px; border-radius: 4px; margin-top: 5px; overflow: hidden; }
         .exp-fill { height: 100%; background: var(--exp); width: 0%; transition: 0.3s; }
 
-        /* Сетка ресурсов (из твоего рисунка) */
+        /* Сетка ресурсов */
         .res-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
         .res-box { background: var(--card); border: 1px solid #333; border-radius: 12px; padding: 10px; text-align: center; }
         .res-box .val { display: block; font-size: 1.1rem; font-weight: bold; color: var(--gold); }
@@ -34,34 +34,38 @@
         /* Главная карточка */
         .main-card { background: var(--card); border-radius: 20px; padding: 20px; border: 1px solid var(--gold); text-align: center; margin-bottom: 15px; }
         
-        /* Кнопки и Навигация */
-        .btn-gold { background: var(--gold); color: black; border: none; padding: 15px; border-radius: 15px; font-weight: bold; width: 100%; cursor: pointer; }
+        /* Кнопки */
+        .btn-gold { background: var(--gold); color: black; border: none; padding: 15px; border-radius: 15px; font-weight: bold; width: 100%; cursor: pointer; font-size: 1rem; }
+        .btn-gold:disabled { opacity: 0.3; cursor: not-allowed; }
+
         .nav-bar { position: fixed; bottom: 0; width: 100%; background: #111; display: grid; grid-template-columns: repeat(7, 1fr); border-top: 1px solid #333; height: 65px; }
         .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.6rem; color: #666; background: none; border: none; }
         .nav-item.active { color: var(--gold); }
 
         /* Setup */
-        #setup-screen { position: fixed; inset: 0; z-index: 100; background: var(--bg); align-items: center; justify-content: center; }
-        .setup-card { background: var(--card); padding: 25px; border-radius: 24px; border: 1px solid #333; width: 90%; text-align: center; }
-        input { background: #222; border: 1px solid #444; color: white; padding: 15px; border-radius: 12px; width: 100%; margin: 15px 0; outline: none; }
+        #setup-screen { position: fixed; inset: 0; z-index: 100; background: var(--bg); display: none; align-items: center; justify-content: center; }
+        #setup-screen.active { display: flex; }
+        .setup-card { background: var(--card); padding: 25px; border-radius: 24px; border: 1px solid #333; width: 90%; max-width: 400px; text-align: center; }
+        input { background: #222; border: 1px solid #444; color: white; padding: 15px; border-radius: 12px; width: 100%; margin: 15px 0; font-size: 1rem; }
         .path-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .path-btn { background: #222; border: 1px solid #444; color: white; padding: 12px; border-radius: 12px; cursor: pointer; }
-        .path-btn.selected { border-color: var(--gold); background: #2a1f0d; color: var(--gold); }
+        .path-btn { background: #222; border: 1px solid #444; color: white; padding: 12px; border-radius: 12px; cursor: pointer; transition: 0.2s; }
+        .path-btn.selected { border-color: var(--gold); background: #2a1f0d; color: var(--gold); transform: scale(1.05); }
     </style>
 </head>
 <body>
 
-    <div id="setup-screen" class="screen">
+    <div id="setup-screen">
         <div class="setup-card">
-            <h2>Основание</h2>
-            <input type="text" id="setup-name" placeholder="Название королевства" maxlength="14">
+            <h2 style="margin:0 0 10px 0">Основание</h2>
+            <p style="font-size: 0.8rem; color: #888; margin-bottom: 10px;">Придумайте название и путь</p>
+            <input type="text" id="setup-name" placeholder="Имя королевства..." autocomplete="off">
             <div class="path-grid">
                 <button class="path-btn" onclick="setPath('Еда', '🍞', this)">🍞 Еда</button>
                 <button class="path-btn" onclick="setPath('Стройка', '🏗️', this)">🏗️ Стройка</button>
                 <button class="path-btn" onclick="setPath('Алхимия', '⚗️', this)">⚗️ Алхимия</button>
                 <button class="path-btn" onclick="setPath('Знания', '📜', this)">📜 Знания</button>
             </div>
-            <button id="setup-confirm" class="btn-gold" style="margin-top:20px; opacity:0.5" disabled onclick="confirmSetup()">СОЗДАТЬ</button>
+            <button id="setup-confirm" class="btn-gold" style="margin-top:20px;" disabled onclick="confirmSetup()">СОЗДАТЬ</button>
         </div>
     </div>
 
@@ -69,7 +73,7 @@
         <section id="tab-home" class="screen active">
             <div class="header-top">
                 <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
-                    <span id="ui-title" style="color: var(--gold)">Новичок</span>
+                    <span id="ui-title" style="color: var(--gold)">Поселение</span>
                     <span>Ур. <span id="ui-lvl">1</span></span>
                 </div>
                 <div class="exp-bar"><div class="exp-fill" id="ui-exp"></div></div>
@@ -77,15 +81,15 @@
 
             <div class="main-card">
                 <h2 id="ui-name" style="margin:0">Королевство</h2>
-                <div id="ui-main-res" style="margin: 5px 0; font-size: 0.9rem; color: #888;">Ресурс</div>
-                <div style="font-size: 0.8rem; margin-top: 10px;">Доход: <span id="ui-income" style="color:var(--exp)">0</span>/мин</div>
+                <div id="ui-main-res" style="margin: 5px 0; font-size: 0.9rem; color: #888;">Путь</div>
+                <div style="font-size: 0.8rem; margin-top: 10px;">Баланс: <span id="res-gold">0</span> 💰</div>
             </div>
 
             <div class="res-grid">
-                <div class="res-box"><span class="val" id="res-gold">0</span><span class="lab">Золото 💰</span></div>
-                <div class="res-box"><span class="val" id="res-food">0</span><span class="lab">Еда 🍞</span></div>
-                <div class="res-box"><span class="val" id="res-wood">0</span><span class="lab">Стройка 🏗️</span></div>
-                <div class="res-box"><span class="val" id="res-alchemy">0</span><span class="lab">Алхимия ⚗️</span></div>
+                <div class="res-box"><span class="val" id="val-food">0</span><span class="lab">Еда 🍞</span></div>
+                <div class="res-box"><span class="val" id="val-wood">0</span><span class="lab">Стройка 🏗️</span></div>
+                <div class="res-box"><span class="val" id="val-alchemy">0</span><span class="lab">Алхимия ⚗️</span></div>
+                <div class="res-box"><span class="val" id="val-edu">0</span><span class="lab">Знания 📜</span></div>
             </div>
 
             <button class="btn-gold" onclick="manualWork()">РАБОТАТЬ ⚒️</button>
@@ -113,8 +117,11 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // Получаем уникальный ID игрока
-        const userId = tg.initDataUnsafe?.user?.id || "local_user";
+        // Безопасное получение ID
+        let userId = "local";
+        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            userId = tg.initDataUnsafe.user.id;
+        }
         const saveKey = "k_rpg_" + userId;
 
         let state = JSON.parse(localStorage.getItem(saveKey)) || {
@@ -124,7 +131,7 @@
             workers: []
         };
 
-        let tP = "", tI = "";
+        let selectedP = "", selectedI = "";
 
         function init() {
             if (!state.init) {
@@ -137,46 +144,66 @@
         }
 
         function setPath(p, i, btn) {
-            tP = p; tI = i;
+            selectedP = p; selectedI = i;
             document.querySelectorAll('.path-btn').forEach(b => b.classList.remove('selected'));
             btn.classList.add('selected');
             validate();
+            tg.HapticFeedback.impactOccurred('light');
         }
 
         function validate() {
-            const n = document.getElementById('setup-name').value.trim();
-            const b = document.getElementById('setup-confirm');
-            b.disabled = !(n.length >= 3 && tP !== "");
-            b.style.opacity = b.disabled ? "0.5" : "1";
+            const name = document.getElementById('setup-name').value.trim();
+            const btn = document.getElementById('setup-confirm');
+            if (name.length >= 3 && selectedP !== "") {
+                btn.disabled = false;
+            } else {
+                btn.disabled = true;
+            }
         }
 
         function confirmSetup() {
-            state.name = document.getElementById('setup-name').value.trim();
-            state.path = tP; state.icon = tI; state.init = true;
+            const name = document.getElementById('setup-name').value.trim();
+            state.name = name;
+            state.path = selectedP;
+            state.icon = selectedI;
+            state.init = true;
+            
             document.getElementById('setup-screen').classList.remove('active');
             document.getElementById('main-ui').style.display = 'block';
+            
+            save();
             updateUI();
+            tg.HapticFeedback.notificationOccurred('success');
         }
 
         function manualWork() {
             state.gold += 1;
-            state.exp += 5;
-            if(state.exp >= 100) { state.lvl++; state.exp = 0; }
+            state.exp += 10;
+            if(state.exp >= 100) {
+                state.lvl++;
+                state.exp = 0;
+                tg.HapticFeedback.notificationOccurred('success');
+            }
             updateUI();
             tg.HapticFeedback.impactOccurred('medium');
         }
 
         function updateUI() {
             document.getElementById('ui-name').innerText = state.name;
-            document.getElementById('ui-main-res').innerText = state.icon + " " + state.path;
+            document.getElementById('ui-main-res').innerText = state.icon + " Специализация: " + state.path;
             document.getElementById('ui-lvl').innerText = state.lvl;
             document.getElementById('ui-exp').style.width = state.exp + "%";
             
             document.getElementById('res-gold').innerText = Math.floor(state.gold);
-            document.getElementById('res-food').innerText = state.resources.food;
-            document.getElementById('res-wood').innerText = state.resources.wood;
-            document.getElementById('res-alchemy').innerText = state.resources.alchemy;
+            document.getElementById('val-food').innerText = state.resources.food;
+            document.getElementById('val-wood').innerText = state.resources.wood;
+            document.getElementById('val-alchemy').innerText = state.resources.alchemy;
+            document.getElementById('val-edu').innerText = state.resources.edu;
             
+            save();
+        }
+
+        function save() {
             localStorage.setItem(saveKey, JSON.stringify(state));
         }
 
@@ -185,9 +212,11 @@
             document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
             document.getElementById('tab-' + id).classList.add('active');
             btn.classList.add('active');
+            tg.HapticFeedback.impactOccurred('light');
         }
 
-        init();
+        // Запуск с небольшой задержкой для инициализации ТГ
+        setTimeout(init, 100);
     </script>
 </body>
 </html>
