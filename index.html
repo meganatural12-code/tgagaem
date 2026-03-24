@@ -4,193 +4,881 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Kingdom RPG</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root { --gold: #ff9800; --bg: #0a0a0a; --card: #161616; --text: #e0e0e0; --hp: #f44336; --safe: #2196f3; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
-        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; height: 100vh; overflow: hidden; }
+        :root { 
+            --gold: #ff9800; --bg: #0a0a0a; --card: #161616; --card-hover: #1e1e1e; 
+            --text: #e0e0e0; --text-muted: #888; --hp: #f44336; --safe: #2196f3; 
+            --border: #333; --accent: #4caf50; --mythic: #e91e63; --leg: #ffc107; --epic: #9c27b0;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
         
-        /* Экраны */
-        .screen { display: none; height: 100%; flex-direction: column; padding: 15px; overflow-y: auto; padding-bottom: 80px; }
-        .active { display: flex; }
+        /* Layout */
+        #game-container { flex: 1; overflow-y: auto; padding-bottom: 70px; }
+        .screen { display: none; padding: 15px; animation: fadeIn 0.3s ease; }
+        .screen.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Оформление карточек и сеток */
-        .res-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0; }
-        .res-item { background: var(--card); padding: 10px; border-radius: 12px; border: 1px solid #333; text-align: center; }
-        .res-val { font-weight: bold; color: var(--gold); display: block; }
-        
-        .worker-card { background: var(--card); border-radius: 15px; padding: 12px; margin-bottom: 10px; border: 1px solid #282828; transition: 0.3s; }
-        .shield-active { border-color: var(--safe) !important; box-shadow: 0 0 10px var(--safe); }
-        
-        .hp-bar { width: 100%; height: 8px; background: #222; border-radius: 4px; overflow: hidden; margin: 8px 0; }
-        .hp-fill { height: 100%; background: var(--hp); transition: 0.5s; }
+        /* Typography & Utilities */
+        h1, h2, h3 { margin-bottom: 10px; color: white; }
+        .text-center { text-align: center; }
+        .flex { display: flex; } .justify-between { justify-content: space-between; } .align-center { align-items: center; }
+        .mt-10 { margin-top: 10px; } .mb-10 { margin-bottom: 10px; }
+        .gap-10 { gap: 10px; } .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-        /* Кнопки */
-        .btn-main { background: var(--gold); color: black; border: none; padding: 15px; border-radius: 15px; font-weight: bold; width: 100%; cursor: pointer; }
-        .btn-s { padding: 8px; border-radius: 8px; border: none; font-weight: bold; color: white; cursor: pointer; font-size: 0.7rem; }
+        /* Setup Screen */
+        #setup-screen { position: fixed; inset: 0; z-index: 100; background: var(--bg); display: none; align-items: center; justify-content: center; padding: 20px; }
+        #setup-screen.active { display: flex; }
+        .setup-card { background: var(--card); padding: 25px; border-radius: 20px; border: 1px solid var(--border); width: 100%; max-width: 400px; text-align: center; }
+        .input-base { background: #222; border: 1px solid var(--border); color: white; padding: 12px; width: 100%; border-radius: 10px; margin-bottom: 15px; font-size: 16px; }
         
-        /* Навигация */
-        .nav { position: fixed; bottom: 0; width: 100%; background: #111; display: grid; grid-template-columns: repeat(6, 1fr); height: 65px; border-top: 1px solid #333; }
-        .nav-btn { background: none; border: none; color: #666; font-size: 0.6rem; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        /* Buttons */
+        .btn { background: #222; border: 1px solid var(--border); color: white; padding: 10px 15px; border-radius: 10px; cursor: pointer; transition: 0.2s; font-weight: bold; }
+        .btn:active { transform: scale(0.95); }
+        .btn-main { background: var(--gold); color: black; border: none; padding: 15px; border-radius: 15px; width: 100%; font-size: 16px; }
+        .btn-main:disabled { background: #555; color: #888; cursor: not-allowed; }
+        .btn-action { background: var(--accent); color: white; border: none; padding: 8px 12px; border-radius: 8px; font-size: 12px; }
+        .btn-blue { background: var(--safe); } .btn-red { background: var(--hp); }
+        .path-btn.selected { border-color: var(--gold); color: var(--gold); background: rgba(255, 152, 0, 0.1); }
+
+        /* Top Bar Info */
+        .top-info { background: var(--card); border-bottom: 1px solid var(--border); padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+        .avatar-small { width: 40px; height: 40px; border-radius: 50%; background: #333; display: flex; align-items: center; justify-content: center; font-size: 20px; border: 2px solid var(--gold); cursor: pointer; }
+
+        /* Resource Grid */
+        .res-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 15px; }
+        .res-item { background: var(--card); padding: 10px 5px; border-radius: 12px; border: 1px solid var(--border); text-align: center; font-size: 12px; }
+        .res-val { font-weight: bold; color: var(--gold); display: block; font-size: 14px; margin-bottom: 2px; }
+
+        /* Worker Card */
+        .worker-card { background: var(--card); border-radius: 15px; padding: 12px; margin-bottom: 10px; border: 1px solid var(--border); position: relative; overflow: hidden; }
+        .worker-card.shielded { border-color: var(--safe); box-shadow: 0 0 8px rgba(33, 150, 243, 0.3); }
+        .worker-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .worker-class-icon { font-size: 24px; margin-right: 10px; }
+        .hp-bar-bg { width: 100%; height: 6px; background: #222; border-radius: 3px; margin: 8px 0; overflow: hidden; }
+        .hp-bar-fill { height: 100%; background: var(--hp); transition: 0.3s; }
+        
+        /* Rarities */
+        .rank-0 { color: #a0a0a0; } /* Common */
+        .rank-1 { color: #4caf50; } /* Rare */
+        .rank-2 { color: #2196f3; } /* Super Rare */
+        .rank-3 { color: #9c27b0; } /* Epic */
+        .rank-4 { color: #ffc107; text-shadow: 0 0 5px rgba(255,193,7,0.5); } /* Leg */
+        .rank-5 { color: #e91e63; text-shadow: 0 0 5px rgba(233,30,99,0.5); font-weight: bold; } /* Mythic */
+
+        /* Navigation */
+        .nav { position: fixed; bottom: 0; width: 100%; background: #111; display: flex; justify-content: space-around; height: 65px; border-top: 1px solid var(--border); z-index: 50; }
+        .nav-btn { background: none; border: none; color: var(--text-muted); font-size: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; cursor: pointer; transition: 0.2s; }
+        .nav-btn i { font-size: 22px; margin-bottom: 4px; font-style: normal; }
         .nav-btn.active { color: var(--gold); }
 
-        /* Настройка (Setup) */
-        #setup-screen { position: fixed; inset: 0; z-index: 100; background: var(--bg); display: none; align-items: center; justify-content: center; }
-        #setup-screen.active { display: flex; }
-        .setup-card { background: var(--card); padding: 25px; border-radius: 20px; border: 1px solid #333; width: 90%; text-align: center; }
-        .path-btn { background: #222; border: 1px solid #444; color: white; padding: 10px; border-radius: 10px; margin: 5px; cursor: pointer; }
-        .path-btn.selected { border-color: var(--gold); color: var(--gold); background: #2a1f0d; }
+        /* Modals */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 200; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .modal-overlay.active { display: flex; }
+        .modal-content { background: var(--card); border: 1px solid var(--border); border-radius: 15px; width: 100%; max-width: 400px; max-height: 80vh; overflow-y: auto; padding: 20px; position: relative; }
+        .close-modal { position: absolute; top: 15px; right: 15px; background: none; border: none; color: white; font-size: 20px; cursor: pointer; }
+
+        /* Combat Log */
+        .combat-log { background: #111; border: 1px solid var(--border); border-radius: 10px; height: 200px; overflow-y: auto; padding: 10px; font-size: 12px; margin-top: 15px; font-family: monospace; }
+        .log-entry { margin-bottom: 4px; border-bottom: 1px dashed #333; padding-bottom: 2px; }
+
+        /* Tabs inside Modals */
+        .modal-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 15px; }
+        .m-tab { flex: 1; text-align: center; padding: 10px; cursor: pointer; color: var(--text-muted); border-bottom: 2px solid transparent; }
+        .m-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+        .m-tab-content { display: none; }
+        .m-tab-content.active { display: block; }
     </style>
 </head>
 <body>
 
+    <!-- Setup Screen -->
     <div id="setup-screen">
         <div class="setup-card">
-            <h2>Основание</h2>
-            <input type="text" id="setup-name" style="background:#222; border:1px solid #444; color:white; padding:12px; width:100%; border-radius:10px; margin-bottom:15px" placeholder="Название королевства">
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px">
-                <button class="path-btn" onclick="setPath('food', '🍞 Еда', this)">🍞 Еда</button>
-                <button class="path-btn" onclick="setPath('wood', '🏗️ Стройка', this)">🏗️ Стройка</button>
-                <button class="path-btn" onclick="setPath('alchemy', '⚗️ Алхимия', this)">⚗️ Алхимия</button>
-                <button class="path-btn" onclick="setPath('edu', '📜 Знания', this)">📜 Знания</button>
+            <h2>Основание Королевства</h2>
+            <p style="font-size:12px; color:var(--text-muted); margin-bottom:15px;">Выберите путь добычи. Изменить его будет невозможно!</p>
+            <input type="text" id="setup-name" class="input-base" placeholder="Название королевства (напр. Авалон)">
+            
+            <div class="grid-2 mb-10">
+                <button class="btn path-btn" onclick="setPath('food', '🍞')">🍞 Еда</button>
+                <button class="btn path-btn" onclick="setPath('wood', '🏗️')">🏗️ Стройматериалы</button>
+                <button class="btn path-btn" onclick="setPath('alchemy', '⚗️')">⚗️ Алхимия</button>
+                <button class="btn path-btn" onclick="setPath('edu', '📜')">📜 Образование</button>
             </div>
-            <button id="setup-confirm" class="btn-main" style="margin-top:20px" disabled onclick="confirmSetup()">СОЗДАТЬ</button>
+            
+            <button id="setup-confirm" class="btn-main mt-10" disabled onclick="confirmSetup()">НАЧАТЬ ПУТЬ</button>
         </div>
     </div>
 
-    <main id="main-ui" style="display:none">
+    <!-- Main Game UI -->
+    <div id="top-bar" class="top-info" style="display:none;">
+        <div>
+            <div style="font-weight:bold; font-size:16px;" id="hdr-kingdom">Королевство</div>
+            <div style="font-size:12px; color:var(--text-muted);">Ур. <span id="hdr-lvl">1</span> | 💰 <span id="hdr-gold">0</span></div>
+        </div>
+        <div class="avatar-small" onclick="showProfile()">👑</div>
+    </div>
+
+    <div id="game-container" style="display:none;">
+        
+        <!-- Tab: HOME -->
         <section id="tab-home" class="screen active">
             <div class="res-grid">
-                <div class="res-item"><span class="res-val" id="res-gold">0</span>Золото 💰</div>
                 <div class="res-item"><span class="res-val" id="res-food">0</span>Еда 🍞</div>
                 <div class="res-item"><span class="res-val" id="res-wood">0</span>Стройка 🏗️</div>
                 <div class="res-item"><span class="res-val" id="res-alchemy">0</span>Алхимия ⚗️</div>
                 <div class="res-item"><span class="res-val" id="res-edu">0</span>Знания 📜</div>
-                <div class="res-item" style="border-color:var(--gold)"><span class="res-val" id="res-prod">0</span><small id="res-prod-name">Добыча</small></div>
+                <div class="res-item" style="border-color:var(--gold)"><span class="res-val" id="res-prod">0</span>Добыча <span id="res-icon"></span></div>
+                <div class="res-item"><span class="res-val" id="res-income">0/м</span>Доход общ.</div>
             </div>
 
+            <div class="flex justify-between align-center mb-10">
+                <h3>Ваши Рабочие (<span id="worker-count">0</span>)</h3>
+                <button class="btn-action" onclick="workManually()">Собрать налог (+1💰)</button>
+            </div>
+            
             <div id="workers-list"></div>
-            <button class="btn-main" onclick="manualGold()">РАБОТАТЬ ⚒️ (+1 монета)</button>
         </section>
 
-        <nav class="nav">
-            <button class="nav-btn active" onclick="tab('home', this)">🏠<span>Главная</span></button>
-            <button class="nav-btn">🏆<span>Топ</span></button>
-            <button class="nav-btn">🤝<span>Найм</span></button>
-            <button class="nav-btn">⚖️<span>Рынок</span></button>
-            <button class="nav-btn">⚒️<span>Цех</span></button>
-            <button class="nav-btn">⚙️<span>Опции</span></button>
-        </nav>
-    </main>
+        <!-- Tab: TOP -->
+        <section id="tab-top" class="screen">
+            <h2 class="text-center">Рейтинг Королевств</h2>
+            <div class="flex gap-10 mb-10">
+                <button class="btn flex-1" style="border-color:var(--gold)">По добыче</button>
+                <button class="btn flex-1">Арена</button>
+            </div>
+            <div id="leaderboard-list"></div>
+        </section>
+
+        <!-- Tab: HIRE -->
+        <section id="tab-hire" class="screen">
+            <div class="flex justify-between align-center mb-10">
+                <h2>Рынок Найма</h2>
+                <div style="font-size:12px; color:var(--text-muted)">Обнова: <span id="hire-timer">00:00</span></div>
+            </div>
+            <p style="font-size:12px; color:var(--text-muted); margin-bottom:15px;">Нанимайте рабочих разных рангов и классов.</p>
+            <div id="hire-list"></div>
+        </section>
+
+        <!-- Tab: MARKET -->
+        <section id="tab-market" class="screen">
+            <h2 class="text-center mb-10">Рынок</h2>
+            <div class="worker-card text-center">
+                <h3>Обмен с Системой (3 к 1)</h3>
+                <div class="flex align-center justify-between mt-10 mb-10">
+                    <select id="trade-give" class="input-base" style="width:40%; margin:0;">
+                        <option value="food">Еда</option>
+                        <option value="wood">Стройка</option>
+                        <option value="alchemy">Алхимия</option>
+                        <option value="edu">Знания</option>
+                    </select>
+                    <span> ➡️ </span>
+                    <select id="trade-get" class="input-base" style="width:40%; margin:0;">
+                        <option value="gold">Золото</option>
+                        <option value="food">Еда</option>
+                        <option value="wood">Стройка</option>
+                        <option value="alchemy">Алхимия</option>
+                        <option value="edu">Знания</option>
+                    </select>
+                </div>
+                <input type="number" id="trade-amount" class="input-base" placeholder="Сколько отдать (кратн. 3)" style="margin-bottom:10px;">
+                <button class="btn-main" onclick="executeTrade()">Обменять</button>
+            </div>
+
+            <h3 class="mt-10 mb-10">Аукцион (Симуляция)</h3>
+            <div class="worker-card">
+                <div class="flex justify-between">
+                    <div><b>Эпический Меч Крови</b> <span class="rank-3">Эпик</span></div>
+                    <div style="color:var(--gold)">5000 💰</div>
+                </div>
+                <div style="font-size:12px; color:var(--text-muted); margin-top:5px;">Ставка: Игрок_777. Конец через: 1ч 20м</div>
+            </div>
+        </section>
+
+        <!-- Tab: WORKSHOP -->
+        <section id="tab-workshop" class="screen">
+            <div class="modal-tabs">
+                <div class="m-tab active" onclick="switchWorkshop(0)">⚒️ Кузница</div>
+                <div class="m-tab" onclick="switchWorkshop(1)">⚗️ Лаборатория</div>
+            </div>
+
+            <div id="ws-forge" class="m-tab-content active text-center">
+                <p style="font-size:12px; color:#888;">Создавайте оружие и броню. Шанс ультимативного 5% из леги.</p>
+                <div class="grid-2 mt-10">
+                    <button class="btn" onclick="craftItem('weapon')">Ковать Оружие<br><small>200 Стройки, 50 Золота</small></button>
+                    <button class="btn" onclick="craftItem('armor')">Ковать Броню<br><small>200 Стройки, 50 Золота</small></button>
+                </div>
+                <h4 class="mt-10">Ваш инвентарь (снаряжение)</h4>
+                <div id="inv-list" class="mt-10 text-left" style="max-height: 200px; overflow-y:auto;"></div>
+            </div>
+
+            <div id="ws-lab" class="m-tab-content text-center">
+                <p style="font-size:12px; color:#888;">Эксперимент: Шанс сделать рабочего мифическим (с Двуликостью) или убить навсегда.</p>
+                <div class="mt-10 mb-10">
+                    <select id="lab-worker-select" class="input-base"></select>
+                </div>
+                <button class="btn-main" style="background:var(--mythic); color:white;" onclick="runExperiment()">🧪 Провести Эксперимент<br><small>Требует: 1000 Алхимии, 500 Золота</small></button>
+            </div>
+        </section>
+
+        <!-- Tab: WORLD -->
+        <section id="tab-world" class="screen">
+            <div class="grid-2">
+                <div class="worker-card text-center" onclick="openCombatModal('arena')">
+                    <div style="font-size:30px">⚔️</div>
+                    <h3>Арена 3v3</h3>
+                    <small style="color:var(--text-muted)">PvP Рейтинг</small>
+                </div>
+                <div class="worker-card text-center" onclick="alert('Башня: В разработке. Ожидайте патча!')">
+                    <div style="font-size:30px">🗼</div>
+                    <h3>Башня (100 ур)</h3>
+                    <small style="color:var(--text-muted)">Энергия: 25/25</small>
+                </div>
+                <div class="worker-card text-center" onclick="alert('Рейды доступны по выходным!')">
+                    <div style="font-size:30px">🐉</div>
+                    <h3>Рейды</h3>
+                    <small style="color:var(--text-muted)">Мировые боссы</small>
+                </div>
+                <div class="worker-card text-center" onclick="alert('Вступление в клан с 5 уровня королевства.')">
+                    <div style="font-size:30px">🛡️</div>
+                    <h3>Кланы</h3>
+                    <small style="color:var(--text-muted)">10/10 участников</small>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Bottom Nav -->
+    <nav class="nav" id="bottom-nav" style="display:none;">
+        <button class="nav-btn active" onclick="switchTab('tab-home', this)"><i>🏠</i>Главная</button>
+        <button class="nav-btn" onclick="switchTab('tab-top', this); renderLeaderboard();"><i>🏆</i>Топ</button>
+        <button class="nav-btn" onclick="switchTab('tab-hire', this)"><i>🤝</i>Найм</button>
+        <button class="nav-btn" onclick="switchTab('tab-market', this)"><i>⚖️</i>Рынок</button>
+        <button class="nav-btn" onclick="switchTab('tab-workshop', this); renderLabWorkers(); renderInventory();"><i>⚒️</i>Цех</button>
+        <button class="nav-btn" onclick="switchTab('tab-world', this)"><i>🌍</i>Мир</button>
+    </nav>
+
+    <!-- Worker Modal -->
+    <div id="worker-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="close-modal" onclick="closeModal('worker-modal')">×</button>
+            <div id="wm-content"></div>
+        </div>
+    </div>
+
+    <!-- Combat Modal -->
+    <div id="combat-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 600px;">
+            <button class="close-modal" onclick="closeModal('combat-modal')">×</button>
+            <h2 class="text-center mb-10" id="combat-title">Арена 3v3</h2>
+            <div class="flex justify-between align-center" style="background:#222; padding:10px; border-radius:10px; border:1px solid #444;">
+                <div id="combat-team-1" style="width:45%"></div>
+                <div style="font-weight:bold; font-size:24px; color:var(--hp)">VS</div>
+                <div id="combat-team-2" style="width:45%; text-align:right"></div>
+            </div>
+            <button id="btn-start-combat" class="btn-main mt-10" onclick="runCombatLog()">Начать Бой</button>
+            <div class="combat-log" id="combat-log"></div>
+        </div>
+    </div>
 
     <script>
-        const tg = window.Telegram.WebApp;
-        const uid = tg.initDataUnsafe?.user?.id || "local";
-        const KEY = "k_rpg_save_" + uid;
+        /* --- CONSTANTS & CONFIG --- */
+        const RANKS = [
+            { id: 0, name: "Обычный", class: "rank-0", cap: 1, baseIncome: 10, cost: 100 },
+            { id: 1, name: "Редкий", class: "rank-1", cap: 2, baseIncome: 12, cost: 500 },
+            { id: 2, name: "Сверхредкий", class: "rank-2", cap: 3, baseIncome: 16, cost: 1500 },
+            { id: 3, name: "Эпический", class: "rank-3", cap: 4, baseIncome: 22, cost: 5000 },
+            { id: 4, name: "Легендарный", class: "rank-4", cap: 5, baseIncome: 30, cost: 20000 },
+            { id: 5, name: "Мифический", class: "rank-5", cap: 5, baseIncome: 45, cost: 100000 }
+        ];
 
-        let state = JSON.parse(localStorage.getItem(KEY)) || {
-            init: false, name: "", path: "", icon: "", gold: 100,
-            resources: { food: 300, wood: 300, alchemy: 300, edu: 300 },
-            workers: []
+        const CLASSES = [
+            { id: "sword", name: "Мечник", icon: "🤺", hpMod: 1.1, atkMod: 1.0 },
+            { id: "assassin", name: "Ассасин", icon: "🥷", hpMod: 0.8, atkMod: 1.4 },
+            { id: "archer", name: "Лучник", icon: "🏹", hpMod: 0.8, atkMod: 1.2 },
+            { id: "tank", name: "Танк", icon: "🛡️", hpMod: 1.5, atkMod: 0.7 },
+            { id: "spear", name: "Копейщик", icon: "🔱", hpMod: 1.0, atkMod: 1.1 },
+            { id: "berserk", name: "Берсерк", icon: "🪓", hpMod: 1.2, atkMod: 1.3 }
+        ];
+
+        const TRAITS = [
+            { id: "workaholic", name: "Трудоголик", desc: "+20% к добыче", type: "income", val: 1.2 },
+            { id: "thick_skin", name: "Толстая кожа", desc: "+5 макс ХП", type: "hp", val: 5 },
+            { id: "devoted", name: "Преданность", desc: "Скрытый потенциал эволюции (скрыто: +стоимость перенайма)", type: "evo", val: 0 },
+            { id: "vampire", name: "Кровопийца", desc: "В бою лечится на 10% от урона", type: "combat", val: 0.1 },
+            { id: "eagle_eye", name: "Острый глаз", desc: "+15% шанс крита", type: "combat_crit", val: 0.15 },
+            { id: "two_faced", name: "Двуликость", desc: "Проклятие: 10% шанс бить своих, 5% шанс убить ХП рабочему вне боя", type: "curse", val: 0 } // Mythic curse
+        ];
+
+        /* --- STATE --- */
+        let STATE = JSON.parse(localStorage.getItem('k_rpg_save')) || {
+            init: false, name: "", path: "", icon: "", level: 1, xp: 0,
+            res: { gold: 500, food: 1000, wood: 1000, alchemy: 1000, edu: 1000 },
+            workers: [],
+            inventory: [],
+            hirePool: [],
+            hireTimer: 7200, // 2 hours in sec
+            lastTick: Date.now()
         };
 
-        let tP = "", tI = "";
-
-        function setPath(p, i, btn) {
-            tP = p; tI = i;
+        /* --- SETUP --- */
+        let tempPath = "", tempIcon = "";
+        function setPath(p, i) {
+            tempPath = p; tempIcon = i;
             document.querySelectorAll('.path-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
+            event.target.classList.add('selected');
             document.getElementById('setup-confirm').disabled = false;
         }
 
         function confirmSetup() {
-            state.name = document.getElementById('setup-name').value || "Королевство";
-            state.path = tP; state.icon = tI; state.init = true;
-            // Добавляем первого рабочего
-            state.workers.push({ id: Date.now(), hp: 20, maxHp: 20, shield: 0, hungerTimer: 0 });
-            document.getElementById('setup-screen').classList.remove('active');
-            document.getElementById('main-ui').style.display = 'block';
-            update();
-        }
-
-        function manualGold() { state.gold += 1; update(); tg.HapticFeedback.impactOccurred('light'); }
-
-        function feed(id) {
-            let w = state.workers.find(x => x.id === id);
-            if (state.resources.food >= 20 && w.hp < w.maxHp) {
-                state.resources.food -= 20;
-                w.hp = Math.min(w.maxHp, w.hp + 5);
-                update();
-            }
-        }
-
-        function protect(id) {
-            let w = state.workers.find(x => x.id === id);
-            if (state.resources.alchemy >= 50 && w.shield <= 0) {
-                state.resources.alchemy -= 50;
-                w.shield = 300; // 5 минут защиты
-                update();
-            }
-        }
-
-        function update() {
-            document.getElementById('res-gold').innerText = state.gold;
-            document.getElementById('res-food').innerText = state.resources.food;
-            document.getElementById('res-wood').innerText = state.resources.wood;
-            document.getElementById('res-alchemy').innerText = state.resources.alchemy;
-            document.getElementById('res-edu').innerText = state.resources.edu;
-            document.getElementById('res-prod').innerText = state.resources[state.path] || 0;
-            document.getElementById('res-prod-name').innerText = "Добыча: " + state.icon;
-
-            const list = document.getElementById('workers-list');
-            list.innerHTML = "";
-            state.workers.forEach(w => {
-                list.innerHTML += `
-                    <div class="worker-card ${w.shield > 0 ? 'shield-active' : ''}">
-                        <div style="display:flex; justify-content:space-between">
-                            <b>Рабочий ${w.shield > 0 ? '🛡️' : ''}</b>
-                            <span style="color:${w.hp < 5 ? 'red' : 'white'}">❤️ ${w.hp}/${w.maxHp}</span>
-                        </div>
-                        <div class="hp-bar"><div class="hp-fill" style="width:${(w.hp/w.maxHp)*100}%"></div></div>
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px">
-                            <button class="btn-s" style="background:#4caf50" onclick="feed(${w.id})">ЕДА (20🍞)</button>
-                            <button class="btn-s" style="background:#2196f3" onclick="protect(${w.id})">ЩИТ (50⚗️)</button>
-                        </div>
-                        ${w.shield > 0 ? `<center><small style="color:var(--safe)">Защита: ${w.shield}с</small></center>` : ''}
-                    </div>`;
-            });
-            localStorage.setItem(KEY, JSON.stringify(state));
-        }
-
-        // Главный цикл (1 раз в секунду)
-        setInterval(() => {
-            if(!state.init) return;
+            STATE.name = document.getElementById('setup-name').value || "Авалон";
+            STATE.path = tempPath; 
+            STATE.icon = tempIcon; 
+            STATE.init = true;
+            // Give 1 common worker
+            hireWorkerToState(generateWorker(0));
+            saveState();
             
-            state.workers.forEach(w => {
-                // Логика щита и голода
-                if (w.shield > 0) {
-                    w.shield--;
-                } else {
-                    w.hungerTimer++;
-                    if (w.hungerTimer >= 120) { // 120 секунд = 2 минуты
-                        if (w.hp > 0) w.hp--;
+            document.getElementById('setup-screen').classList.remove('active');
+            document.getElementById('top-bar').style.display = 'flex';
+            document.getElementById('game-container').style.display = 'block';
+            document.getElementById('bottom-nav').style.display = 'flex';
+            generateHirePool();
+            updateUI();
+        }
+
+        /* --- CORE LOGIC --- */
+        function generateWorker(forceRank = -1) {
+            // Ranks: Common 50%, Rare 30%, SR 12%, Epic 6%, Leg 1.9%, Mythic 0.1%
+            let r = Math.random() * 100;
+            let rankId = 0;
+            if (forceRank !== -1) rankId = forceRank;
+            else if (r < 0.1) rankId = 5;
+            else if (r < 2) rankId = 4;
+            else if (r < 8) rankId = 3;
+            else if (r < 20) rankId = 2;
+            else if (r < 50) rankId = 1;
+
+            let rank = RANKS[rankId];
+            let cls = CLASSES[Math.floor(Math.random() * CLASSES.length)];
+            
+            // Abilities logic
+            let numAbilities = rank.cap;
+            let abilities = [];
+            let pool = [...TRAITS];
+            // random chances for extra abilities as per text
+            if (Math.random() < 0.3) numAbilities++; 
+            if (rankId === 5) {
+                // Mythic ultimate (just a placeholder for super skill)
+                abilities.push({ id: "ult", name: "Гнев Богов", desc: "Ультимативный навык", type: "combat", val: 2.0 });
+                numAbilities--;
+            }
+
+            for(let i=0; i<numAbilities; i++) {
+                if(pool.length === 0) break;
+                let idx = Math.floor(Math.random() * pool.length);
+                abilities.push(pool[idx]);
+                pool.splice(idx, 1);
+            }
+
+            let maxHp = 20 + (abilities.find(a=>a.id === 'thick_skin') ? 5 : 0);
+
+            return {
+                id: 'w_' + Date.now() + Math.floor(Math.random()*1000),
+                name: "Наёмник",
+                rankId: rankId,
+                clsId: cls.id,
+                level: 1, xp: 0,
+                hp: maxHp, maxHp: maxHp,
+                shield: 0, // seconds
+                hungerTimer: 0,
+                traits: abilities,
+                equip: { weapon: null, armor: null }
+            };
+        }
+
+        function getWorkerIncome(w) {
+            if (w.hp <= 0) return 0;
+            let base = RANKS[w.rankId].baseIncome;
+            // Level scaling: text says +2 for lvl 2, +4 for lvl 3 etc. (10, 12, 16)
+            let lvlBonus = w.level === 1 ? 0 : w.level === 2 ? 2 : w.level === 3 ? 6 : (w.level * 3);
+            let total = base + lvlBonus;
+            
+            if (w.traits.find(t => t.id === 'workaholic')) total = Math.floor(total * 1.2);
+            return total;
+        }
+
+        function gameLoop() {
+            if(!STATE.init) return;
+            let now = Date.now();
+            let dt = (now - STATE.lastTick) / 1000; // seconds
+            if(dt < 1) return;
+            STATE.lastTick = now;
+
+            // 1. Worker Mechanics (HP, Shield, Income)
+            let incomeThisSec = 0;
+            STATE.workers.forEach(w => {
+                // Shield
+                if (w.shield > 0) w.shield = Math.max(0, w.shield - dt);
+                
+                // Hunger / HP Loss (1 HP per 2 mins = 120s) text: "Хп всего 20 1хп тратиться за2минуты"
+                if (w.shield <= 0 && w.hp > 0) {
+                    w.hungerTimer += dt;
+                    if (w.hungerTimer >= 120) {
+                        w.hp -= 1;
                         w.hungerTimer = 0;
                     }
+                    
+                    // Two faced curse proc outside combat (5% chance to drop random worker HP to 0)
+                    if (w.traits.find(t => t.id === 'two_faced') && Math.random() < 0.005) { // scaled for tick rate
+                        let targets = STATE.workers.filter(x => x.hp > 0 && x.id !== w.id);
+                        if(targets.length > 0) {
+                            let victim = targets[Math.floor(Math.random()*targets.length)];
+                            victim.hp = 0; 
+                            // console log equivalent
+                        }
+                    }
                 }
+
+                // Passive Income (10 per min = ~0.16 per sec)
+                let incPerMin = getWorkerIncome(w);
+                incomeThisSec += (incPerMin / 60) * dt;
+                
+                // Add tiny XP for working
+                if (w.hp > 0 && Math.random() < 0.1) giveWorkerXP(w, 1);
             });
 
-            // Пассивный доход (10 в мин = +1 каждые 6 сек)
-            if (!window.incT) window.incT = 0;
-            window.incT++;
-            if (window.incT >= 6) {
-                state.workers.forEach(w => { if(w.hp > 0) state.resources[state.path]++; });
-                window.incT = 0;
+            // Store fractional income and integerize
+            STATE.fractionalIncome = (STATE.fractionalIncome || 0) + incomeThisSec;
+            if (STATE.fractionalIncome >= 1) {
+                let add = Math.floor(STATE.fractionalIncome);
+                STATE.res[STATE.path] += add;
+                STATE.fractionalIncome -= add;
             }
-            update();
-        }, 1000);
 
-        if(!state.init) document.getElementById('setup-screen').classList.add('active');
-        else { document.getElementById('main-ui').style.display = 'block'; update(); }
+            // 2. Hire Market Refresh
+            STATE.hireTimer -= dt;
+            if (STATE.hireTimer <= 0) {
+                generateHirePool();
+                STATE.hireTimer = 7200; // 2 hours
+            }
+
+            saveState();
+            updateUI();
+        }
+
+        function giveWorkerXP(w, amount) {
+            w.xp += amount;
+            let req = w.level * 100;
+            if (w.xp >= req) {
+                w.xp -= req;
+                w.level++;
+            }
+        }
+
+        function saveState() { localStorage.setItem('k_rpg_save', JSON.stringify(STATE)); }
+
+        /* --- UI RENDERERS --- */
+        function updateUI() {
+            if(!STATE.init) return;
+            
+            // Header
+            document.getElementById('hdr-kingdom').innerText = STATE.icon + " " + STATE.name;
+            document.getElementById('hdr-gold').innerText = Math.floor(STATE.res.gold);
+            
+            // Resources tab
+            document.getElementById('res-food').innerText = Math.floor(STATE.res.food);
+            document.getElementById('res-wood').innerText = Math.floor(STATE.res.wood);
+            document.getElementById('res-alchemy').innerText = Math.floor(STATE.res.alchemy);
+            document.getElementById('res-edu').innerText = Math.floor(STATE.res.edu);
+            document.getElementById('res-prod').innerText = Math.floor(STATE.res[STATE.path]);
+            document.getElementById('res-icon').innerText = STATE.icon;
+
+            let totalIncome = STATE.workers.reduce((acc, w) => acc + getWorkerIncome(w), 0);
+            document.getElementById('res-income').innerText = totalIncome + "/м";
+            document.getElementById('worker-count').innerText = STATE.workers.length;
+
+            // Workers list
+            let wList = document.getElementById('workers-list');
+            if(document.getElementById('tab-home').classList.contains('active')) {
+                wList.innerHTML = STATE.workers.map(w => {
+                    let r = RANKS[w.rankId];
+                    let c = CLASSES.find(x => x.id === w.clsId);
+                    let inc = getWorkerIncome(w);
+                    let hpPct = (w.hp / w.maxHp) * 100;
+                    return `
+                    <div class="worker-card ${w.shield > 0 ? 'shielded' : ''}" onclick="openWorkerModal('${w.id}')" style="cursor:pointer">
+                        <div class="worker-header">
+                            <div><span class="worker-class-icon">${c.icon}</span> <b>Рабочий Ур.${w.level}</b> <span class="${r.class}">[${r.name}]</span></div>
+                            <div style="color:${w.hp <= 5 ? 'var(--hp)' : 'white'}">❤️ ${w.hp}/${w.maxHp}</div>
+                        </div>
+                        <div class="hp-bar-bg"><div class="hp-bar-fill" style="width:${hpPct}%"></div></div>
+                        <div class="flex justify-between" style="font-size:12px; color:var(--text-muted)">
+                            <span>Добыча: <b style="color:var(--gold)">${inc}/м</b></span>
+                            ${w.shield > 0 ? `<span style="color:var(--safe)">🛡️ Защита: ${Math.floor(w.shield/60)}м ${Math.floor(w.shield%60)}с</span>` : ''}
+                            ${w.hp === 0 ? `<span style="color:var(--hp)">ОСТАНОВЛЕН</span>` : ''}
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+
+            // Hire tab
+            if(document.getElementById('tab-hire').classList.contains('active')) {
+                let m = Math.floor(STATE.hireTimer / 60);
+                let s = Math.floor(STATE.hireTimer % 60);
+                document.getElementById('hire-timer').innerText = `${m}:${s < 10 ? '0'+s : s}`;
+            }
+        }
+
+        function switchTab(id, btn) {
+            document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+            btn.classList.add('active');
+            updateUI();
+        }
+
+        /* --- ACTIONS --- */
+        function workManually() {
+            STATE.res.gold += 1;
+            updateUI();
+        }
+
+        function feedWorker(id) {
+            let w = STATE.workers.find(x => x.id === id);
+            if(w && STATE.res.food >= 20 && w.hp < w.maxHp) {
+                STATE.res.food -= 20;
+                w.hp = Math.min(w.maxHp, w.hp + 5);
+                giveWorkerXP(w, 5); // XP for food
+                openWorkerModal(id); // refresh modal
+                updateUI();
+            }
+        }
+
+        function protectWorker(id) {
+            // text: "10алхимии это 1минута защиты"
+            let w = STATE.workers.find(x => x.id === id);
+            if(w && STATE.res.alchemy >= 10) {
+                STATE.res.alchemy -= 10;
+                w.shield += 60; // add 1 minute
+                openWorkerModal(id);
+                updateUI();
+            }
+        }
+
+        /* --- WORKER MODAL --- */
+        function openWorkerModal(id) {
+            let w = STATE.workers.find(x => x.id === id);
+            if(!w) return;
+            let r = RANKS[w.rankId];
+            let c = CLASSES.find(x => x.id === w.clsId);
+            
+            let html = `
+                <div class="text-center mb-10">
+                    <div style="font-size:50px">${c.icon}</div>
+                    <h2>Рабочий</h2>
+                    <div class="${r.class}">${r.name} ${c.name}</div>
+                    <div>Уровень: ${w.level} (Опыт: ${Math.floor(w.xp)}/${w.level*100})</div>
+                </div>
+                
+                <div class="modal-tabs">
+                    <div class="m-tab active" onclick="switchWMTab(0)">Инфо</div>
+                    <div class="m-tab" onclick="switchWMTab(1)">Экипировка</div>
+                </div>
+
+                <div id="wm-info" class="wm-tab-content active">
+                    <div class="flex justify-between align-center mb-10">
+                        <span>Здоровье: ❤️ ${w.hp}/${w.maxHp}</span>
+                        <button class="btn-action btn-red" onclick="feedWorker('${w.id}')">Кормить (20🍞)</button>
+                    </div>
+                    <div class="flex justify-between align-center mb-10">
+                        <span>Защита: 🛡️ ${Math.floor(w.shield/60)}м</span>
+                        <button class="btn-action btn-blue" onclick="protectWorker('${w.id}')">+1мин (10⚗️)</button>
+                    </div>
+                    
+                    <h4 class="mt-10 mb-10">Навыки:</h4>
+                    ${w.traits.length === 0 ? '<small style="color:#888">Нет навыков</small>' : 
+                      w.traits.map(t => `<div style="background:#222; padding:5px; border-radius:5px; margin-bottom:5px; font-size:12px;"><b>${t.name}</b>: ${t.desc}</div>`).join('')}
+                </div>
+
+                <div id="wm-equip" class="wm-tab-content" style="display:none;">
+                    <div class="grid-2">
+                        <div class="worker-card text-center" style="padding:10px;">
+                            <div style="color:var(--text-muted); font-size:10px;">Оружие</div>
+                            ${w.equip.weapon ? w.equip.weapon.name : 'Пусто'}
+                        </div>
+                        <div class="worker-card text-center" style="padding:10px;">
+                            <div style="color:var(--text-muted); font-size:10px;">Броня</div>
+                            ${w.equip.armor ? w.equip.armor.name : 'Пусто'}
+                        </div>
+                    </div>
+                    <p style="font-size:10px; color:#888; text-align:center;">Создавайте экипировку в Мастерской.</p>
+                </div>
+            `;
+            document.getElementById('wm-content').innerHTML = html;
+            document.getElementById('worker-modal').classList.add('active');
+        }
+
+        function switchWMTab(idx) {
+            document.querySelectorAll('.wm-tab-content').forEach(e => e.style.display = 'none');
+            document.querySelectorAll('#worker-modal .m-tab').forEach(e => e.classList.remove('active'));
+            document.querySelectorAll('#worker-modal .m-tab')[idx].classList.add('active');
+            if(idx === 0) document.getElementById('wm-info').style.display = 'block';
+            else document.getElementById('wm-equip').style.display = 'block';
+        }
+
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+        /* --- HIRE SYSTEM --- */
+        function generateHirePool() {
+            STATE.hirePool = [generateWorker(), generateWorker(), generateWorker()];
+            renderHireList();
+        }
+
+        function renderHireList() {
+            let container = document.getElementById('hire-list');
+            if(!STATE.hirePool || STATE.hirePool.length === 0) {
+                container.innerHTML = "<p>Нет доступных рабочих. Ждите обновления рынка.</p>";
+                return;
+            }
+            container.innerHTML = STATE.hirePool.map((w, idx) => {
+                let r = RANKS[w.rankId];
+                let c = CLASSES.find(x => x.id === w.clsId);
+                return `
+                <div class="worker-card">
+                    <div class="flex justify-between align-center">
+                        <div><span style="font-size:24px">${c.icon}</span> <b class="${r.class}">${r.name} ${c.name}</b></div>
+                        <div style="color:var(--gold); font-weight:bold;">${r.cost} 💰</div>
+                    </div>
+                    <div style="font-size:12px; margin:8px 0; color:var(--text-muted)">
+                        Навыков: ${w.traits.length}. Баз. добыча: ${r.baseIncome}/м.
+                    </div>
+                    <button class="btn-main" style="padding:10px;" onclick="hireFromPool(${idx})">Нанять</button>
+                </div>`;
+            }).join('');
+        }
+
+        function hireFromPool(idx) {
+            let w = STATE.hirePool[idx];
+            let cost = RANKS[w.rankId].cost;
+            if(STATE.res.gold >= cost) {
+                STATE.res.gold -= cost;
+                hireWorkerToState(w);
+                STATE.hirePool.splice(idx, 1);
+                renderHireList();
+                saveState();
+                alert(`Вы наняли: ${RANKS[w.rankId].name} ${CLASSES.find(x=>x.id===w.clsId).name}`);
+            } else {
+                alert("Недостаточно Золота!");
+            }
+        }
+        function hireWorkerToState(w) { STATE.workers.push(w); }
+
+        /* --- MARKET --- */
+        function executeTrade() {
+            let give = document.getElementById('trade-give').value;
+            let get = document.getElementById('trade-get').value;
+            let amt = parseInt(document.getElementById('trade-amount').value);
+            
+            if(isNaN(amt) || amt <= 0 || amt % 3 !== 0) { alert("Сумма должна быть кратна 3!"); return; }
+            if(give === get) { alert("Нельзя менять на то же самое!"); return; }
+            
+            let costObj = give === 'gold' ? STATE.res.gold : STATE.res[give];
+            if(costObj < amt) { alert("Недостаточно ресурсов!"); return; }
+            
+            STATE.res[give] -= amt;
+            let gain = amt / 3;
+            if(get === 'gold') STATE.res.gold += gain;
+            else STATE.res[get] += gain;
+            
+            alert(`Обмен успешен! Получено ${gain} ${get}`);
+            saveState();
+            updateUI();
+        }
+
+        /* --- WORKSHOP --- */
+        function switchWorkshop(idx) {
+            document.getElementById('ws-forge').style.display = idx === 0 ? 'block' : 'none';
+            document.getElementById('ws-lab').style.display = idx === 1 ? 'block' : 'none';
+            document.querySelectorAll('#tab-workshop .m-tab').forEach((el, i) => {
+                el.classList.toggle('active', i === idx);
+            });
+        }
+
+        function craftItem(type) {
+            if(STATE.res.wood >= 200 && STATE.res.gold >= 50) {
+                STATE.res.wood -= 200; STATE.res.gold -= 50;
+                
+                let rId = Math.random() < 0.05 ? 4 : Math.random() < 0.2 ? 3 : Math.random() < 0.5 ? 2 : 1;
+                let rank = RANKS[rId];
+                let item = {
+                    id: 'it_'+Date.now(),
+                    type: type, // weapon/armor
+                    name: (type === 'weapon' ? 'Меч ' : 'Броня ') + rank.name,
+                    rankId: rId,
+                    bonus: rId * 5 // stat bonus
+                };
+                STATE.inventory.push(item);
+                alert(`Выковано: ${item.name}!`);
+                renderInventory();
+                saveState();
+            } else {
+                alert("Недостаточно Стройматериалов или Золота!");
+            }
+        }
+
+        function renderInventory() {
+            let c = document.getElementById('inv-list');
+            if(STATE.inventory.length === 0) c.innerHTML = "<small>Пусто</small>";
+            else c.innerHTML = STATE.inventory.map(i => `<div style="background:#222; padding:5px; margin-bottom:5px; border-radius:5px;"><span class="${RANKS[i.rankId].class}">${i.name}</span> (+${i.bonus} статов)</div>`).join('');
+        }
+
+        function renderLabWorkers() {
+            let sel = document.getElementById('lab-worker-select');
+            sel.innerHTML = STATE.workers.map(w => `<option value="${w.id}">Ур.${w.level} ${RANKS[w.rankId].name} (${CLASSES.find(x=>x.id===w.clsId).name})</option>`).join('');
+        }
+
+        function runExperiment() {
+            let id = document.getElementById('lab-worker-select').value;
+            let wIdx = STATE.workers.findIndex(x => x.id === id);
+            if(wIdx === -1) return;
+            
+            if(STATE.res.alchemy >= 1000 && STATE.res.gold >= 500) {
+                STATE.res.alchemy -= 1000; STATE.res.gold -= 500;
+                
+                // 50% chance to die, 50% chance mythic
+                if(Math.random() < 0.5) {
+                    STATE.workers.splice(wIdx, 1);
+                    alert("Эксперимент ПРОВАЛИЛСЯ! Рабочий уничтожен в эфире.");
+                } else {
+                    let w = STATE.workers[wIdx];
+                    w.rankId = 5; // Mythic
+                    w.traits = [{ id: "two_faced", name: "Двуликость", desc: "Проклятие: 10% шанс бить своих, 5% шанс убить ХП рабочему вне боя", type: "curse", val: 0 }];
+                    alert("УСПЕХ! Рабочий стал Мифическим, но получил проклятие Двуликость!");
+                }
+                renderLabWorkers();
+                saveState();
+                updateUI();
+            } else {
+                alert("Нужно 1000 Алхимии и 500 Золота!");
+            }
+        }
+
+        /* --- LEADERBOARD (SIMULATION) --- */
+        function renderLeaderboard() {
+            const names = ["ShadowLord", "FarmKing", "IronBank", "Авалон_Топ", "NoobSlayer"];
+            let html = names.map((n, i) => `
+                <div class="worker-card flex justify-between align-center" onclick="alert('Профиль игрока ${n}\\nЛвл: ${100-i*10}\\nДоход: ${5000-i*500}/м')">
+                    <div><b>${i+1}. ${n}</b></div>
+                    <div style="color:var(--gold)">${100000 - i*15000} 💰</div>
+                </div>
+            `).join('');
+            document.getElementById('leaderboard-list').innerHTML = html;
+        }
+
+        /* --- COMBAT SYSTEM --- */
+        function openCombatModal(type) {
+            if(STATE.workers.length < 3) { alert("Нужно минимум 3 рабочих для боя!"); return; }
+            
+            document.getElementById('combat-modal').classList.add('active');
+            document.getElementById('combat-log').innerHTML = "";
+            document.getElementById('btn-start-combat').style.display = 'block';
+            
+            // Build teams visually
+            let t1 = STATE.workers.slice(0,3);
+            document.getElementById('combat-team-1').innerHTML = t1.map(w => `<div>${CLASSES.find(x=>x.id===w.clsId).icon} Ур.${w.level}</div>`).join('');
+            
+            // Generate enemy team
+            document.getElementById('combat-team-2').innerHTML = `
+                <div>🥷 Ур.5 Враг</div>
+                <div>🛡️ Ур.5 Враг</div>
+                <div>🏹 Ур.5 Враг</div>
+            `;
+        }
+
+        function runCombatLog() {
+            document.getElementById('btn-start-combat').style.display = 'none';
+            let log = document.getElementById('combat-log');
+            log.innerHTML = "<div class='log-entry'>Бой начинается!</div>";
+            
+            let t1 = STATE.workers.slice(0,3).map(w => ({
+                name: "Ваш " + CLASSES.find(x=>x.id===w.clsId).name,
+                hp: w.maxHp * 5, maxHp: w.maxHp * 5,
+                atk: 5 + (w.level*2) * CLASSES.find(x=>x.id===w.clsId).atkMod,
+                isAlly: true, traits: w.traits
+            }));
+            
+            let t2 = [1,2,3].map(i => ({
+                name: "Враг " + i, hp: 50, maxHp: 50, atk: 8, isAlly: false, traits: []
+            }));
+
+            let combaters = [...t1, ...t2];
+            let tick = 0;
+            
+            let interval = setInterval(() => {
+                tick++;
+                // filter alive
+                let alive1 = combaters.filter(c => c.isAlly && c.hp > 0);
+                let alive2 = combaters.filter(c => !c.isAlly && c.hp > 0);
+                
+                if(alive1.length === 0 || alive2.length === 0) {
+                    clearInterval(interval);
+                    log.innerHTML += `<div class='log-entry' style='color:var(--gold)'><b>Бой окончен! Победили: ${alive1.length > 0 ? 'ВЫ' : 'ВРАГИ'}</b></div>`;
+                    if(alive1.length > 0) {
+                        STATE.res.gold += 100;
+                        log.innerHTML += `<div class='log-entry'>Награда: 100 Золота</div>`;
+                        saveState(); updateUI();
+                    }
+                    return;
+                }
+
+                // Random attacker
+                let attacker = combaters.filter(c => c.hp > 0)[Math.floor(Math.random() * combaters.filter(c=>c.hp>0).length)];
+                let targets = attacker.isAlly ? alive2 : alive1;
+                
+                // Two faced logic
+                if(attacker.traits && attacker.traits.find(t=>t.id==='two_faced') && Math.random() < 0.1) {
+                    targets = alive1; // betray!
+                    log.innerHTML += `<div class='log-entry' style='color:var(--mythic)'>[ДВУЛИКОСТЬ] ${attacker.name} атакует своих!</div>`;
+                }
+
+                if(targets.length === 0) return;
+                let target = targets[Math.floor(Math.random() * targets.length)];
+                
+                let dmg = Math.floor(attacker.atk * (0.8 + Math.random()*0.4));
+                
+                // Crit check
+                let crit = false;
+                if(attacker.traits && attacker.traits.find(t=>t.id==='eagle_eye') && Math.random() < 0.15) { dmg*=2; crit=true; }
+                
+                target.hp -= dmg;
+                
+                // Vampire proc
+                if(attacker.traits && attacker.traits.find(t=>t.id==='vampire')) {
+                    let heal = Math.floor(dmg * 0.1);
+                    attacker.hp = Math.min(attacker.maxHp, attacker.hp + heal);
+                }
+
+                log.innerHTML += `<div class='log-entry'>${attacker.name} бьет ${target.name} на <b>${dmg}</b> ${crit?'(КРИТ!)':''} (ХП: ${Math.max(0, target.hp)})</div>`;
+                log.scrollTop = log.scrollHeight;
+
+            }, 800);
+        }
+
+        /* --- INITIALIZE --- */
+        setInterval(gameLoop, 1000); // 1 sec tick
+        
+        if (!STATE.init) {
+            document.getElementById('setup-screen').classList.add('active');
+        } else {
+            document.getElementById('top-bar').style.display = 'flex';
+            document.getElementById('game-container').style.display = 'block';
+            document.getElementById('bottom-nav').style.display = 'flex';
+            if(STATE.hirePool.length === 0) generateHirePool();
+            updateUI();
+        }
+
     </script>
 </body>
 </html>
