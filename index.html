@@ -321,31 +321,7 @@
             { id: "two_faced", name: "Двуликость", desc: "Проклятие: 10% шанс бить своих, 5% шанс убить ХП рабочему вне боя", type: "curse", val: 0 } // Mythic curse
         ];
 
-       /* --- STATE --- */
-let STATE = JSON.parse(localStorage.getItem('k_rpg_save')) || {
-    init: false, 
-    name: "", 
-    path: "gold",         // Ресурс, выбранный на старте (по умолчанию gold)
-    icon: "", 
-    level: 1, 
-    xp: 0,
-    res: { 
-        gold: 500, 
-        food: 1000, 
-        wood: 1000, 
-        alchemy: 1000, 
-        edu: 1000 
-    },
-    workersCount: 0,      // Количество рабочих (из макета 2)
-    workerRate: 10,       // Доход: 10 ед. в минуту
-    lastHarvest: Date.now(), // Время последнего сбора
-    workers: [],          // Твои юниты/персонажи
-    inventory: [],
-    hirePool: [],
-    hireTimer: 7200, 
-    lastTick: Date.now()
-};
-
+     
 /* --- STATE --- */
         let STATE = JSON.parse(localStorage.getItem('k_rpg_save')) || {
             init: false, 
