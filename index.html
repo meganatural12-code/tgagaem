@@ -112,17 +112,12 @@
 
     <!-- Main Game UI -->
     <div id="top-bar" class="top-info" style="display:none;">
-    <div>
-        <div style="font-weight:bold; font-size:16px;" id="hdr-kingdom">Королевство</div>
-        <div style="font-size:12px; color:var(--text-muted);">
-            Ур. <span id="hdr-lvl">1</span> | 💰 <span id="hdr-gold">0</span>
+        <div>
+            <div style="font-weight:bold; font-size:16px;" id="hdr-kingdom">Королевство</div>
+            <div style="font-size:12px; color:var(--text-muted);">Ур. <span id="hdr-lvl">1</span> | 💰 <span id="hdr-gold">0</span></div>
         </div>
+        <div class="avatar-small" onclick="showProfile()">👑</div>
     </div>
-    <div style="width: 80px; height: 4px; background: #333; border-radius: 2px; margin-top: 4px; overflow: hidden;">
-        <div id="hdr-exp-fill" style="width: 0%; height: 100%; background: var(--safe); transition: 0.3s;"></div>
-    </div>
-    <div class="avatar-small" onclick="showProfile()">👑</div>
-</div>
 
     <div id="game-container" style="display:none;">
         
@@ -327,46 +322,31 @@
             lastTick: Date.now()
         };
 
-     /* --- SETUP --- */
-let tempPath = "", tempIcon = "";
-function setPath(p, i) {
-    tempPath = p; tempIcon = i;
-    document.querySelectorAll('.path-btn').forEach(b => b.classList.remove('selected'));
-    
-    if (window.event && window.event.target) {
-        window.event.target.classList.add('selected');
-    }
-    
-    document.getElementById('setup-confirm').disabled = false;
-}
+        /* --- SETUP --- */
+        let tempPath = "", tempIcon = "";
+        function setPath(p, i) {
+            tempPath = p; tempIcon = i;
+            document.querySelectorAll('.path-btn').forEach(b => b.classList.remove('selected'));
+            event.target.classList.add('selected');
+            document.getElementById('setup-confirm').disabled = false;
+        }
 
-function confirmSetup() {
-    STATE.name = document.getElementById('setup-name').value || "Авалон";
-    STATE.path = tempPath; 
-    STATE.icon = tempIcon; 
-    STATE.init = true;
-
-    // --- ВОТ ЭТИ 3 СТРОЧКИ НУЖНО ДОБАВИТЬ ---
-    STATE.workersCount = 1;   // Устанавливаем 1 рабочего для пассивного дохода
-    STATE.xp = 100;           // Устанавливаем стартовый опыт 100
-    STATE.lastHarvest = Date.now(); // Сбрасываем таймер добычи ресурсов
-    // ---------------------------------------
-
-    // Твой старый код найма первого героя
-    if (typeof generateWorker === "function") {
-        hireWorkerToState(generateWorker(0));
-    }
-    
-    saveState();
-    
-    document.getElementById('setup-screen').classList.remove('active');
-    document.getElementById('top-bar').style.display = 'flex';
-    document.getElementById('game-container').style.display = 'block';
-    document.getElementById('bottom-nav').style.display = 'flex';
-    
-    if (typeof generateHirePool === "function") generateHirePool();
-    updateUI();
-}
+        function confirmSetup() {
+            STATE.name = document.getElementById('setup-name').value || "Авалон";
+            STATE.path = tempPath; 
+            STATE.icon = tempIcon; 
+            STATE.init = true;
+            // Give 1 common worker
+            hireWorkerToState(generateWorker(0));
+            saveState();
+            
+            document.getElementById('setup-screen').classList.remove('active');
+            document.getElementById('top-bar').style.display = 'flex';
+            document.getElementById('game-container').style.display = 'block';
+            document.getElementById('bottom-nav').style.display = 'flex';
+            generateHirePool();
+            updateUI();
+        }
 
         /* --- CORE LOGIC --- */
         function generateWorker(forceRank = -1) {
@@ -499,95 +479,9 @@ function confirmSetup() {
 
         function saveState() { localStorage.setItem('k_rpg_save', JSON.stringify(STATE)); }
 
-      /* --- UI RENDERERS --- */
-       function updateUI() {
+        /* --- UI RENDERERS --- */
+        function updateUI() {
             if(!STATE.init) return;
-            
-            // 1. Верхняя панель
-            const hdrKingdom = document.getElementById('hdr-kingdom');
-            if (hdrKingdom) hdrKingdom.innerText = (STATE.icon || "🏰") + " " + STATE.name;
-            
-            const hdrGold = document.getElementById('hdr-gold');
-            if (hdrGold) hdrGold.innerText = Math.floor(STATE.res.gold);
-            
-            const hdrLvl = document.getElementById('hdr-lvl');
-            if (hdrLvl) hdrLvl.innerText = STATE.level || 1;
-
-            const expFill = document.getElementById('hdr-exp-fill');
-            if (expFill) {
-                let req = (STATE.level || 1) * 500; 
-                let pct = ((STATE.xp || 0) / req) * 100;
-                expFill.style.width = Math.min(pct, 100) + "%";
-            }
-            
-            // 2. Ресурсы
-            const resFood = document.getElementById('res-food');
-            if (resFood) resFood.innerText = Math.floor(STATE.res.food);
-            
-            const resWood = document.getElementById('res-wood');
-            if (resWood) resWood.innerText = Math.floor(STATE.res.wood);
-            
-            const resAlc = document.getElementById('res-alchemy');
-            if (resAlc) resAlc.innerText = Math.floor(STATE.res.alchemy);
-            
-            const resEdu = document.getElementById('res-edu');
-            if (resEdu) resEdu.innerText = Math.floor(STATE.res.edu);
-
-            // 3. Данные Профиля
-            const wc = document.getElementById('worker-count');
-            if (wc) wc.innerText = STATE.workersCount || 0;
-            
-            const ev = document.getElementById('exp-val');
-            if (ev) ev.innerText = Math.floor(STATE.xp || 0);
-            
-            const eb = document.getElementById('exp-bar-fill');
-            if (eb) {
-                let progress = ((STATE.xp || 0) / 500) * 100;
-                eb.style.width = Math.min(progress, 100) + '%';
-            }
-        } // Вот эта скобка закрывает функцию updateUI
-            
-            // --- 1. ШАПКА (Header) ---
-            document.getElementById('hdr-kingdom').innerText = (STATE.icon || "🏰") + " " + STATE.name;
-            document.getElementById('hdr-gold').innerText = Math.floor(STATE.res.gold);
-            document.getElementById('hdr-lvl').innerText = STATE.level || 1;
-
-            // Полоска опыта в шапке
-            const expFill = document.getElementById('hdr-exp-fill');
-            if (expFill) {
-                let req = (STATE.level || 1) * 500; 
-                let pct = ((STATE.xp || 0) / req) * 100;
-                expFill.style.width = Math.min(pct, 100) + "%";
-            }
-            
-            // --- 2. ВКЛАДКА РЕСУРСОВ ---
-            document.getElementById('res-food').innerText = Math.floor(STATE.res.food);
-            document.getElementById('res-wood').innerText = Math.floor(STATE.res.wood);
-            document.getElementById('res-alchemy').innerText = Math.floor(STATE.res.alchemy);
-            document.getElementById('res-edu').innerText = Math.floor(STATE.res.edu);
-            
-            const resProd = document.getElementById('res-prod');
-            if (resProd) resProd.innerText = Math.floor(STATE.res[STATE.path] || 0);
-            
-            const resIcon = document.getElementById('res-icon');
-            if (resIcon) resIcon.innerText = STATE.icon;
-
-            // --- 3. ДАННЫЕ ПРОФИЛЯ (Новое) ---
-            const wc = document.getElementById('worker-count');
-            const wi = document.getElementById('worker-income');
-            const ev = document.getElementById('exp-val');
-            const eb = document.getElementById('exp-bar-fill');
-
-            if (wc) wc.innerText = STATE.workersCount || 0;
-            if (wi) wi.innerText = ((STATE.workersCount || 0) * (STATE.workerRate || 10)) + "/м";
-            if (ev) ev.innerText = Math.floor(STATE.xp || 0);
-            
-            // Полоска опыта в самом профиле
-            if (eb) {
-                let progress = ((STATE.xp || 0) / 500) * 100;
-                eb.style.width = Math.min(progress, 100) + '%';
-            }
-        };
             
             // Header
             document.getElementById('hdr-kingdom').innerText = STATE.icon + " " + STATE.name;
