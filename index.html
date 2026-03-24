@@ -7,38 +7,48 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root { --gold: #ff9800; --bg: #0a0a0a; --card: #161616; --text: #e0e0e0; --hp: #f44336; --safe: #2196f3; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
         body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; height: 100vh; overflow: hidden; }
+        
+        /* Экраны */
         .screen { display: none; height: 100%; flex-direction: column; padding: 15px; overflow-y: auto; padding-bottom: 80px; }
         .active { display: flex; }
-        #setup-screen { position: fixed; inset: 0; z-index: 100; background: var(--bg); display: none; align-items: center; justify-content: center; }
-        #setup-screen.active { display: flex; }
-        .setup-card { background: var(--card); padding: 25px; border-radius: 20px; border: 1px solid #333; width: 90%; text-align: center; }
-        input { background: #222; border: 1px solid #444; color: white; padding: 15px; border-radius: 12px; width: 100%; margin: 10px 0; }
-        .path-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .path-btn { background: #222; border: 1px solid #444; color: white; padding: 10px; border-radius: 10px; cursor: pointer; }
-        .path-btn.selected { border-color: var(--gold); background: #2a1f0d; color: var(--gold); }
+
+        /* Оформление карточек и сеток */
         .res-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0; }
         .res-item { background: var(--card); padding: 10px; border-radius: 12px; border: 1px solid #333; text-align: center; }
         .res-val { font-weight: bold; color: var(--gold); display: block; }
-        .worker-card { background: var(--card); border-radius: 15px; padding: 12px; margin-bottom: 10px; border: 1px solid #282828; }
-        .hp-bar { width: 100%; height: 8px; background: #222; border-radius: 4px; overflow: hidden; margin: 5px 0; }
-        .hp-fill { height: 100%; background: var(--hp); transition: 0.5s; }
-        .w-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-        .btn-s { padding: 8px; border-radius: 8px; border: none; font-weight: bold; color: white; cursor: pointer; font-size: 0.65rem; }
+        
+        .worker-card { background: var(--card); border-radius: 15px; padding: 12px; margin-bottom: 10px; border: 1px solid #282828; transition: 0.3s; }
         .shield-active { border-color: var(--safe) !important; box-shadow: 0 0 10px var(--safe); }
+        
+        .hp-bar { width: 100%; height: 8px; background: #222; border-radius: 4px; overflow: hidden; margin: 8px 0; }
+        .hp-fill { height: 100%; background: var(--hp); transition: 0.5s; }
+
+        /* Кнопки */
         .btn-main { background: var(--gold); color: black; border: none; padding: 15px; border-radius: 15px; font-weight: bold; width: 100%; cursor: pointer; }
-        .nav { position: fixed; bottom: 0; width: 100%; background: #111; display: grid; grid-template-columns: repeat(7, 1fr); height: 65px; border-top: 1px solid #333; }
-        .nav-btn { background: none; border: none; color: #666; font-size: 0.5rem; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .btn-s { padding: 8px; border-radius: 8px; border: none; font-weight: bold; color: white; cursor: pointer; font-size: 0.7rem; }
+        
+        /* Навигация */
+        .nav { position: fixed; bottom: 0; width: 100%; background: #111; display: grid; grid-template-columns: repeat(6, 1fr); height: 65px; border-top: 1px solid #333; }
+        .nav-btn { background: none; border: none; color: #666; font-size: 0.6rem; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .nav-btn.active { color: var(--gold); }
+
+        /* Настройка (Setup) */
+        #setup-screen { position: fixed; inset: 0; z-index: 100; background: var(--bg); display: none; align-items: center; justify-content: center; }
+        #setup-screen.active { display: flex; }
+        .setup-card { background: var(--card); padding: 25px; border-radius: 20px; border: 1px solid #333; width: 90%; text-align: center; }
+        .path-btn { background: #222; border: 1px solid #444; color: white; padding: 10px; border-radius: 10px; margin: 5px; cursor: pointer; }
+        .path-btn.selected { border-color: var(--gold); color: var(--gold); background: #2a1f0d; }
     </style>
 </head>
 <body>
+
     <div id="setup-screen">
         <div class="setup-card">
-            <h3>Основание</h3>
-            <input type="text" id="setup-name" placeholder="Название..." maxlength="15">
-            <div class="path-grid">
+            <h2>Основание</h2>
+            <input type="text" id="setup-name" style="background:#222; border:1px solid #444; color:white; padding:12px; width:100%; border-radius:10px; margin-bottom:15px" placeholder="Название королевства">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px">
                 <button class="path-btn" onclick="setPath('food', '🍞 Еда', this)">🍞 Еда</button>
                 <button class="path-btn" onclick="setPath('wood', '🏗️ Стройка', this)">🏗️ Стройка</button>
                 <button class="path-btn" onclick="setPath('alchemy', '⚗️ Алхимия', this)">⚗️ Алхимия</button>
@@ -51,23 +61,24 @@
     <main id="main-ui" style="display:none">
         <section id="tab-home" class="screen active">
             <div class="res-grid">
-                <div class="res-item"><span class="res-val" id="res-gold">0</span><span>Золото 💰</span></div>
-                <div class="res-item"><span class="res-val" id="res-food">0</span><span>Еда 🍞</span></div>
-                <div class="res-item"><span class="res-val" id="res-wood">0</span><span>Стройка 🏗️</span></div>
-                <div class="res-item"><span class="res-val" id="res-alchemy">0</span><span>Алхимия ⚗️</span></div>
-                <div class="res-item"><span class="res-val" id="res-edu">0</span><span>Знания 📜</span></div>
-                <div class="res-item" style="border-color:var(--gold)"><span class="res-val" id="res-prod">0</span><span id="res-prod-name">Добыча</span></div>
+                <div class="res-item"><span class="res-val" id="res-gold">0</span>Золото 💰</div>
+                <div class="res-item"><span class="res-val" id="res-food">0</span>Еда 🍞</div>
+                <div class="res-item"><span class="res-val" id="res-wood">0</span>Стройка 🏗️</div>
+                <div class="res-item"><span class="res-val" id="res-alchemy">0</span>Алхимия ⚗️</div>
+                <div class="res-item"><span class="res-val" id="res-edu">0</span>Знания 📜</div>
+                <div class="res-item" style="border-color:var(--gold)"><span class="res-val" id="res-prod">0</span><small id="res-prod-name">Добыча</small></div>
             </div>
+
             <div id="workers-list"></div>
-            <button class="btn-main" onclick="manualGold()">РАБОТАТЬ ⚒️ (+1 Золото)</button>
+            <button class="btn-main" onclick="manualGold()">РАБОТАТЬ ⚒️ (+1 монета)</button>
         </section>
+
         <nav class="nav">
-            <button class="nav-btn active">🏠<span>Главная</span></button>
+            <button class="nav-btn active" onclick="tab('home', this)">🏠<span>Главная</span></button>
             <button class="nav-btn">🏆<span>Топ</span></button>
             <button class="nav-btn">🤝<span>Найм</span></button>
             <button class="nav-btn">⚖️<span>Рынок</span></button>
             <button class="nav-btn">⚒️<span>Цех</span></button>
-            <button class="nav-btn" style="opacity:0">.</button>
             <button class="nav-btn">⚙️<span>Опции</span></button>
         </nav>
     </main>
@@ -75,7 +86,7 @@
     <script>
         const tg = window.Telegram.WebApp;
         const uid = tg.initDataUnsafe?.user?.id || "local";
-        const KEY = "k_data_final_" + uid;
+        const KEY = "k_rpg_save_" + uid;
 
         let state = JSON.parse(localStorage.getItem(KEY)) || {
             init: false, name: "", path: "", icon: "", gold: 100,
@@ -84,6 +95,7 @@
         };
 
         let tP = "", tI = "";
+
         function setPath(p, i, btn) {
             tP = p; tI = i;
             document.querySelectorAll('.path-btn').forEach(b => b.classList.remove('selected'));
@@ -94,7 +106,8 @@
         function confirmSetup() {
             state.name = document.getElementById('setup-name').value || "Королевство";
             state.path = tP; state.icon = tI; state.init = true;
-            state.workers.push({ id: Date.now(), hp: 20, maxHp: 20, shield: 0, timer: 0 });
+            // Добавляем первого рабочего
+            state.workers.push({ id: Date.now(), hp: 20, maxHp: 20, shield: 0, hungerTimer: 0 });
             document.getElementById('setup-screen').classList.remove('active');
             document.getElementById('main-ui').style.display = 'block';
             update();
@@ -105,7 +118,8 @@
         function feed(id) {
             let w = state.workers.find(x => x.id === id);
             if (state.resources.food >= 20 && w.hp < w.maxHp) {
-                state.resources.food -= 20; w.hp = Math.min(w.maxHp, w.hp + 5);
+                state.resources.food -= 20;
+                w.hp = Math.min(w.maxHp, w.hp + 5);
                 update();
             }
         }
@@ -113,7 +127,8 @@
         function protect(id) {
             let w = state.workers.find(x => x.id === id);
             if (state.resources.alchemy >= 50 && w.shield <= 0) {
-                state.resources.alchemy -= 50; w.shield = 300;
+                state.resources.alchemy -= 50;
+                w.shield = 300; // 5 минут защиты
                 update();
             }
         }
@@ -125,7 +140,7 @@
             document.getElementById('res-alchemy').innerText = state.resources.alchemy;
             document.getElementById('res-edu').innerText = state.resources.edu;
             document.getElementById('res-prod').innerText = state.resources[state.path] || 0;
-            document.getElementById('res-prod-name').innerText = state.icon;
+            document.getElementById('res-prod-name').innerText = "Добыча: " + state.icon;
 
             const list = document.getElementById('workers-list');
             list.innerHTML = "";
@@ -134,32 +149,42 @@
                     <div class="worker-card ${w.shield > 0 ? 'shield-active' : ''}">
                         <div style="display:flex; justify-content:space-between">
                             <b>Рабочий ${w.shield > 0 ? '🛡️' : ''}</b>
-                            <span>❤️ ${w.hp}/${w.maxHp}</span>
+                            <span style="color:${w.hp < 5 ? 'red' : 'white'}">❤️ ${w.hp}/${w.maxHp}</span>
                         </div>
                         <div class="hp-bar"><div class="hp-fill" style="width:${(w.hp/w.maxHp)*100}%"></div></div>
-                        <div class="w-btns">
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px">
                             <button class="btn-s" style="background:#4caf50" onclick="feed(${w.id})">ЕДА (20🍞)</button>
                             <button class="btn-s" style="background:#2196f3" onclick="protect(${w.id})">ЩИТ (50⚗️)</button>
                         </div>
+                        ${w.shield > 0 ? `<center><small style="color:var(--safe)">Защита: ${w.shield}с</small></center>` : ''}
                     </div>`;
             });
             localStorage.setItem(KEY, JSON.stringify(state));
         }
 
+        // Главный цикл (1 раз в секунду)
         setInterval(() => {
             if(!state.init) return;
+            
             state.workers.forEach(w => {
-                if (w.shield > 0) w.shield--;
-                else {
-                    w.timer++;
-                    if (w.timer >= 120) { if (w.hp > 0) w.hp--; w.timer = 0; }
+                // Логика щита и голода
+                if (w.shield > 0) {
+                    w.shield--;
+                } else {
+                    w.hungerTimer++;
+                    if (w.hungerTimer >= 120) { // 120 секунд = 2 минуты
+                        if (w.hp > 0) w.hp--;
+                        w.hungerTimer = 0;
+                    }
                 }
             });
-            // Доход: 10 в минуту = +1 каждые 6 секунд
-            if (!window.iT) window.iT = 0; window.iT++;
-            if (window.iT >= 6) {
+
+            // Пассивный доход (10 в мин = +1 каждые 6 сек)
+            if (!window.incT) window.incT = 0;
+            window.incT++;
+            if (window.incT >= 6) {
                 state.workers.forEach(w => { if(w.hp > 0) state.resources[state.path]++; });
-                window.iT = 0;
+                window.incT = 0;
             }
             update();
         }, 1000);
