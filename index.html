@@ -13,26 +13,24 @@
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', sans-serif;
             background: var(--bg); color: var(--text); margin: 0; padding: 0;
             height: 100vh; display: flex; flex-direction: column; overflow: hidden;
         }
 
-        /* Экраны и вкладки */
         .screen { display: none; height: 100%; flex-direction: column; padding: 15px; overflow-y: auto; padding-bottom: 80px; }
         .active { display: flex; }
 
-        /* Стили для Setup */
+        /* Setup Screen */
         #setup-screen { position: fixed; inset: 0; z-index: 100; background: var(--bg); align-items: center; justify-content: center; }
         .setup-card { background: var(--card); padding: 25px; border-radius: 24px; border: 1px solid #333; width: 90%; max-width: 400px; text-align: center; }
         input { background: #222; border: 1px solid #444; color: white; padding: 15px; border-radius: 12px; width: 100%; margin: 15px 0; font-size: 1rem; outline: none; }
-        input:focus { border-color: var(--gold); }
         
         .path-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .path-btn { background: #222; border: 1px solid #444; color: white; padding: 12px; border-radius: 12px; cursor: pointer; font-size: 0.85rem; transition: 0.2s; }
-        .path-btn.selected { border-color: var(--gold); background: #2a1f0d; color: var(--gold); box-shadow: 0 0 10px rgba(255, 152, 0, 0.2); }
+        .path-btn { background: #222; border: 1px solid #444; color: white; padding: 12px; border-radius: 12px; cursor: pointer; font-size: 0.85rem; }
+        .path-btn.selected { border-color: var(--gold); background: #2a1f0d; color: var(--gold); }
 
-        /* Навигация (Нижняя панель) */
+        /* Nav Bar */
         .nav-bar {
             position: fixed; bottom: 0; width: 100%; background: #111;
             display: grid; grid-template-columns: repeat(7, 1fr);
@@ -40,25 +38,20 @@
         }
         .nav-item {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            font-size: 0.65rem; color: #666; cursor: pointer; border: none; background: none;
+            font-size: 0.6rem; color: #666; cursor: pointer; border: none; background: none;
         }
         .nav-item.active { color: var(--gold); }
-        .nav-item i { font-size: 1.2rem; margin-bottom: 3px; }
 
-        /* Общие компоненты UI */
+        /* UI Components */
         .card { background: var(--card); border-radius: 20px; padding: 15px; border: 1px solid #282828; margin-bottom: 12px; }
-        .btn-gold { background: var(--gold); color: black; border: none; padding: 15px; border-radius: 15px; font-weight: bold; width: 100%; cursor: pointer; }
+        .btn-gold { background: var(--gold); color: black; border: none; padding: 15px; border-radius: 15px; font-weight: bold; width: 100%; cursor: pointer; transition: 0.2s; }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .avatar { width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--gold); background: #333; cursor: pointer; overflow: hidden; }
-        .avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .avatar { width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--gold); background: #333; }
         
         .res-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px; }
-        .res-item { background: #1f1f1f; padding: 12px; border-radius: 14px; border: 1px solid #333; display: flex; flex-direction: column; }
-        .res-val { font-size: 1.1rem; font-weight: bold; color: var(--gold); }
+        .res-item { background: #1f1f1f; padding: 12px; border-radius: 14px; border: 1px solid #333; }
+        .res-val { font-size: 1.1rem; font-weight: bold; color: var(--gold); display: block; }
         .res-label { font-size: 0.7rem; color: #888; text-transform: uppercase; }
-
-        /* Лог */
-        .game-log { font-size: 0.8rem; color: #666; min-height: 20px; text-align: center; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -66,9 +59,9 @@
     <div id="setup-screen" class="screen">
         <div class="setup-card">
             <h2 style="margin:0">Основание</h2>
-            <p style="font-size: 0.8rem; color: #777;">Выберите путь. Изменить его нельзя.</p>
+            <p style="font-size: 0.8rem; color: #777;">Выберите путь развития:</p>
             <input type="text" id="setup-name" placeholder="Название королевства" maxlength="16">
-            <div class="path-grid" id="setup-paths">
+            <div class="path-grid">
                 <button class="path-btn" onclick="setPath('Стройматериалы', '🏗️', this)">🏗️ Стройматериалы</button>
                 <button class="path-btn" onclick="setPath('Алхимия', '⚗️', this)">⚗️ Алхимия</button>
                 <button class="path-btn" onclick="setPath('Образование', '📜', this)">📜 Образование</button>
@@ -82,22 +75,19 @@
         <section id="tab-home" class="screen active">
             <div class="header">
                 <div>
-                    <h3 id="ui-k-name" style="margin:0">Королевство</h3>
+                    <h3 id="ui-k-name" style="margin:0">Название</h3>
                     <small id="ui-k-path" style="color:var(--gold)">Путь</small>
                 </div>
-                <div class="avatar" onclick="openProfile()"><img id="ui-avatar" src="" alt=""></div>
+                <div class="avatar" onclick="openProfile()"></div>
             </div>
             <div class="res-row">
                 <div class="res-item"><span class="res-label">Золото</span><span class="res-val" id="ui-gold">0</span></div>
                 <div class="res-item"><span class="res-label" id="ui-res-name">Ресурс</span><span class="res-val" id="ui-res-val">0</span></div>
             </div>
             <div class="card">
-                <p style="font-size: 0.9rem; color: #aaa; margin-top:0">Доход: <span id="ui-income">0</span>/мин</p>
                 <button class="btn-gold" onclick="manualWork()">РАБОТАТЬ ⚒️</button>
-                <div id="home-log" class="game-log">Мир замер в ожидании ваших указов...</div>
+                <div id="home-log" style="text-align:center; font-size:0.8rem; color:#666; margin-top:10px">Начните добычу...</div>
             </div>
-            <div id="worker-list-home">
-                </div>
         </section>
 
         <section id="tab-top" class="screen"><h2>Топ игроков</h2></section>
@@ -119,129 +109,11 @@
     </main>
 
     <script>
-       const tg = window.Telegram.WebApp;
-tg.expand();
-tg.enableClosingConfirmation();
+        const tg = window.Telegram.WebApp;
+        tg.expand();
 
-// Глобальное состояние игры
-let state = JSON.parse(localStorage.getItem('k_rpg_state')) || {
-    init: false,
-    name: "",
-    path: "",
-    icon: "🏗️",
-    gold: 100,
-    res: 0,
-    level: 1,
-    workers: [],
-    inventory: [],
-    stats: { wins: 0, points: 0 }
-};
-
-let tempPath = "";
-let tempIcon = "";
-
-function init() {
-    const setupNameInput = document.getElementById('setup-name');
-    
-    // Проверяем, создано ли уже королевство
-    if (!state.init) {
-        document.getElementById('setup-screen').classList.add('active');
-        // Добавляем слежку за вводом текста
-        setupNameInput.addEventListener('input', validateSetup);
-    } else {
-        document.getElementById('main-ui').style.display = 'block';
-        updateUI();
-    }
-}
-
-// Логика выбора пути
-function setPath(path, icon, btn) {
-    tempPath = path; 
-    tempIcon = icon;
-    // Снимаем выделение со всех кнопок и даем активной
-    document.querySelectorAll('.path-btn').forEach(b => b.classList.remove('selected'));
-    btn.classList.add('selected');
-    
-    validateSetup(); // Проверяем кнопку сразу после клика
-    tg.HapticFeedback.impactOccurred('light');
-}
-
-function validateSetup() {
-    const nameVal = document.getElementById('setup-name').value.trim();
-    const btn = document.getElementById('setup-confirm');
-    
-    // Условие: имя > 2 символов И выбран путь
-    if (nameVal.length >= 3 && tempPath !== "") {
-        btn.disabled = false;
-        btn.style.opacity = "1";
-        btn.style.transform = "scale(1.02)";
-    } else {
-        btn.disabled = true;
-        btn.style.opacity = "0.5";
-        btn.style.transform = "scale(1)";
-    }
-}
-
-function confirmSetup() {
-    const nameVal = document.getElementById('setup-name').value.trim();
-    
-    state.name = nameVal;
-    state.path = tempPath;
-    state.icon = tempIcon;
-    state.init = true;
-    
-    save(); // Сохраняем в память
-    
-    // Переключаем экраны
-    document.getElementById('setup-screen').classList.remove('active');
-    document.getElementById('main-ui').style.display = 'block';
-    
-    updateUI();
-    tg.HapticFeedback.notificationOccurred('success');
-}
-
-// Переключение вкладок
-function switchTab(tabId, btn) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-    
-    const targetTab = document.getElementById('tab-' + tabId);
-    if (targetTab) targetTab.classList.add('active');
-    btn.classList.add('active');
-    
-    tg.HapticFeedback.impactOccurred('light');
-}
-
-function manualWork() {
-    state.res += (1 * state.level);
-    tg.HapticFeedback.impactOccurred('medium');
-    updateUI();
-    document.getElementById('home-log').innerText = `Добыто: +${1 * state.level} ${state.path}`;
-}
-
-function updateUI() {
-    document.getElementById('ui-k-name').innerText = state.name;
-    document.getElementById('ui-k-path').innerText = state.icon + " " + state.path;
-    document.getElementById('ui-gold').innerText = Math.floor(state.gold);
-    document.getElementById('ui-res-val').innerText = Math.floor(state.res);
-    document.getElementById('ui-res-name').innerText = state.path;
-    save();
-}
-
-function save() { 
-    localStorage.setItem('k_rpg_state', JSON.stringify(state)); 
-}
-
-function openProfile() {
-    tg.showPopup({
-        title: state.name,
-        message: `Уровень: ${state.level}\nРесурс: ${state.path}\nЗолото: ${Math.floor(state.gold)}💰`,
-        buttons: [{type: 'close', text: 'Понятно'}]
-    });
-}
-
-// Запуск
-init();
+        let state = JSON.parse(localStorage.getItem('k_rpg_state')) || {
+            init: false, name: "", path: "", icon: "", gold: 100, res: 0, level: 1, workers: []
         };
 
         let tempPath = "";
@@ -250,43 +122,42 @@ init();
         function init() {
             if (!state.init) {
                 document.getElementById('setup-screen').classList.add('active');
+                document.getElementById('setup-name').addEventListener('input', validateSetup);
             } else {
                 document.getElementById('main-ui').style.display = 'block';
                 updateUI();
             }
         }
 
-        // Логика Setup
         function setPath(path, icon, btn) {
             tempPath = path; tempIcon = icon;
             document.querySelectorAll('.path-btn').forEach(b => b.classList.remove('selected'));
             btn.classList.add('selected');
             validateSetup();
+            tg.HapticFeedback.impactOccurred('light');
         }
 
-        const nameInput = document.getElementById('setup-name');
-        nameInput.oninput = validateSetup;
-
         function validateSetup() {
+            const name = document.getElementById('setup-name').value.trim();
             const btn = document.getElementById('setup-confirm');
-            if (nameInput.value.length >= 3 && tempPath !== "") {
+            if (name.length >= 3 && tempPath !== "") {
                 btn.disabled = false; btn.style.opacity = "1";
+            } else {
+                btn.disabled = true; btn.style.opacity = "0.5";
             }
         }
 
         function confirmSetup() {
-            state.name = nameInput.value;
+            state.name = document.getElementById('setup-name').value.trim();
             state.path = tempPath;
             state.icon = tempIcon;
             state.init = true;
-            save();
             document.getElementById('setup-screen').classList.remove('active');
             document.getElementById('main-ui').style.display = 'block';
             updateUI();
             tg.HapticFeedback.notificationOccurred('success');
         }
 
-        // Навигация
         function switchTab(tabId, btn) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -296,29 +167,22 @@ init();
         }
 
         function manualWork() {
-            state.res += (1 * state.level);
+            state.res += 1;
             tg.HapticFeedback.impactOccurred('medium');
             updateUI();
-            document.getElementById('home-log').innerText = `Добыто ресурсов: +${1 * state.level}`;
         }
 
         function updateUI() {
             document.getElementById('ui-k-name').innerText = state.name;
-            document.getElementById('ui-k-path').innerText = state.icon + " Путь: " + state.path;
+            document.getElementById('ui-k-path').innerText = state.icon + " " + state.path;
             document.getElementById('ui-gold').innerText = Math.floor(state.gold);
             document.getElementById('ui-res-val').innerText = Math.floor(state.res);
             document.getElementById('ui-res-name').innerText = state.path;
-            save();
+            localStorage.setItem('k_rpg_state', JSON.stringify(state));
         }
 
-        function save() { localStorage.setItem('k_rpg_state', JSON.stringify(state)); }
-
         function openProfile() {
-            tg.showPopup({
-                title: state.name,
-                message: `Уровень королевства: ${state.level}\nРесурс: ${state.path}\nЗолото: ${Math.floor(state.gold)}`,
-                buttons: [{type: 'close'}]
-            });
+            tg.showPopup({ title: state.name, message: `Путь: ${state.path}\nЗолото: ${state.gold}`, buttons: [{type:'close'}] });
         }
 
         init();
