@@ -500,17 +500,19 @@ function confirmSetup() {
         function saveState() { localStorage.setItem('k_rpg_save', JSON.stringify(STATE)); }
 
       /* --- UI RENDERERS --- */
-        function updateUI() {
+       function updateUI() {
             if(!STATE.init) return;
             
-            // 1. Верхняя панель (Имя, Золото, Уровень)
-            document.getElementById('hdr-kingdom').innerText = (STATE.icon || "🏰") + " " + STATE.name;
-            document.getElementById('hdr-gold').innerText = Math.floor(STATE.res.gold);
+            // 1. Верхняя панель
+            const hdrKingdom = document.getElementById('hdr-kingdom');
+            if (hdrKingdom) hdrKingdom.innerText = (STATE.icon || "🏰") + " " + STATE.name;
+            
+            const hdrGold = document.getElementById('hdr-gold');
+            if (hdrGold) hdrGold.innerText = Math.floor(STATE.res.gold);
             
             const hdrLvl = document.getElementById('hdr-lvl');
             if (hdrLvl) hdrLvl.innerText = STATE.level || 1;
 
-            // 2. Полоска опыта в шапке (под названием)
             const expFill = document.getElementById('hdr-exp-fill');
             if (expFill) {
                 let req = (STATE.level || 1) * 500; 
@@ -518,35 +520,32 @@ function confirmSetup() {
                 expFill.style.width = Math.min(pct, 100) + "%";
             }
             
-            // 3. Ресурсы (Еда, Дерево, Алхимия, Обучение)
-            document.getElementById('res-food').innerText = Math.floor(STATE.res.food);
-            document.getElementById('res-wood').innerText = Math.floor(STATE.res.wood);
-            document.getElementById('res-alchemy').innerText = Math.floor(STATE.res.alchemy);
-            document.getElementById('res-edu').innerText = Math.floor(STATE.res.edu);
+            // 2. Ресурсы
+            const resFood = document.getElementById('res-food');
+            if (resFood) resFood.innerText = Math.floor(STATE.res.food);
             
-            // Текущая добыча (выбранный путь)
-            const resProd = document.getElementById('res-prod');
-            if (resProd) resProd.innerText = Math.floor(STATE.res[STATE.path] || 0);
+            const resWood = document.getElementById('res-wood');
+            if (resWood) resWood.innerText = Math.floor(STATE.res.wood);
             
-            const resIcon = document.getElementById('res-icon');
-            if (resIcon) resIcon.innerText = STATE.icon;
+            const resAlc = document.getElementById('res-alchemy');
+            if (resAlc) resAlc.innerText = Math.floor(STATE.res.alchemy);
+            
+            const resEdu = document.getElementById('res-edu');
+            if (resEdu) resEdu.innerText = Math.floor(STATE.res.edu);
 
-            // 4. Данные в Профиле (Нижняя часть)
+            // 3. Данные Профиля
             const wc = document.getElementById('worker-count');
-            const wi = document.getElementById('worker-income');
-            const ev = document.getElementById('exp-val');
-            const eb = document.getElementById('exp-bar-fill');
-
             if (wc) wc.innerText = STATE.workersCount || 0;
-            if (wi) wi.innerText = ((STATE.workersCount || 0) * (STATE.workerRate || 10)) + "/м";
+            
+            const ev = document.getElementById('exp-val');
             if (ev) ev.innerText = Math.floor(STATE.xp || 0);
             
-            // Полоска опыта внутри профиля
+            const eb = document.getElementById('exp-bar-fill');
             if (eb) {
                 let progress = ((STATE.xp || 0) / 500) * 100;
                 eb.style.width = Math.min(progress, 100) + '%';
             }
-        }
+        } // Вот эта скобка закрывает функцию updateUI
             
             // --- 1. ШАПКА (Header) ---
             document.getElementById('hdr-kingdom').innerText = (STATE.icon || "🏰") + " " + STATE.name;
